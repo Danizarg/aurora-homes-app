@@ -35,12 +35,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="create"
+        name="ai"
         options={{
-          title: "Create",
+          title: "AI",
           tabBarIcon: ({ color }) => (
             <View style={styles.createBadge}>
-              <Ionicons name="add" size={26} color={colors.white} />
+              <Ionicons name="sparkles" size={22} color={colors.white} />
             </View>
           ),
         }}

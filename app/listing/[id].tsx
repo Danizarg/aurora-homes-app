@@ -43,12 +43,16 @@ export default function ListingDetailScreen() {
             onMomentumScrollEnd={(e) => setGalleryIndex(Math.round(e.nativeEvent.contentOffset.x / screenWidth))}
           >
             {listing.images.map((image) => (
-              <Image key={image.id} source={{ uri: image.uri }} style={{ width: screenWidth, height: 280 }} />
+              <Image key={image.id} source={{ uri: image.uri }} style={{ width: screenWidth, height: 380 }} />
             ))}
           </ScrollView>
+          <View style={styles.galleryScrim} />
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={20} color={colors.navy} />
           </Pressable>
+          <View style={styles.galleryCounter}>
+            <Text style={styles.galleryCounterText}>{galleryIndex + 1} / {listing.images.length}</Text>
+          </View>
           <View style={styles.galleryDots}>
             {listing.images.map((_, i) => (
               <View key={i} style={[styles.dot, i === galleryIndex && styles.dotActive]} />
@@ -196,6 +200,15 @@ const styles = StyleSheet.create({
     position: "absolute", top: spacing.md, left: spacing.md, backgroundColor: colors.white,
     borderRadius: radius.pill, padding: spacing.sm,
   },
+  galleryScrim: {
+    position: "absolute", bottom: 0, left: 0, right: 0, height: 90,
+    backgroundColor: "rgba(27,36,48,0.28)",
+  },
+  galleryCounter: {
+    position: "absolute", bottom: spacing.md, right: spacing.md,
+    backgroundColor: "rgba(27,36,48,0.55)", borderRadius: radius.pill, paddingVertical: 3, paddingHorizontal: spacing.sm,
+  },
+  galleryCounterText: { ...typography.micro, color: colors.white, textTransform: "none" },
   galleryDots: { position: "absolute", bottom: spacing.sm, alignSelf: "center", flexDirection: "row" },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.6)", marginHorizontal: 3 },
   dotActive: { backgroundColor: colors.white, width: 8, height: 8, borderRadius: 4 },

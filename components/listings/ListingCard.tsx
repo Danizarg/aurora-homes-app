@@ -19,10 +19,20 @@ const modeLabel: Record<Listing["mode"], string> = {
 };
 
 export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) {
-  const price =
-    listing.mode === "buy"
-      ? `${listing.price_sale?.toLocaleString("en-GB")} €`
-      : `${listing.price_monthly?.toLocaleString("en-GB")} €/mo`;
+  const isSale = listing.mode === "buy";
+  const price = isSale
+    ? `${listing.price_sale?.toLocaleString("en-GB")} €`
+    : `${listing.price_monthly?.toLocaleString("en-GB")} €/mo`;
+  const priceNote = isSale ? "Asking price" : "Excl. utilities & fees";
+
+  const highlightFeatures: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+    { icon: "bed-outline", label: `${listing.bedrooms} bd` },
+    { icon: "water-outline", label: `${listing.bathrooms} ba` },
+    { icon: "resize-outline", label: `${listing.size_m2} m²` },
+  ];
+  if (listing.sea_view) highlightFeatures.push({ icon: "sunny-outline", label: "Sea view" });
+  else if (listing.pool) highlightFeatures.push({ icon: "water", label: "Pool" });
+  else if (listing.garage) highlightFeatures.push({ icon: "car-outline", label: "Garage" });
 
   return (
     <Pressable
@@ -52,14 +62,20 @@ export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) 
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={1}>{listing.title}</Text>
         <Text style={styles.location}>{listing.address_area}, {listing.city}</Text>
+
         <View style={styles.metaRow}>
-          <Text style={styles.meta}>{listing.bedrooms} bd</Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.meta}>{listing.bathrooms} ba</Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.meta}>{listing.size_m2} m²</Text>
+          {highlightFeatures.slice(0, 4).map((f) => (
+            <View key={f.label} style={styles.metaItem}>
+              <Ionicons name={f.icon} size={13} color={colors.gold} />
+              <Text style={styles.meta}>{f.label}</Text>
+            </View>
+          ))}
         </View>
-        <Text style={styles.price}>{price}</Text>
+
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>{price}</Text>
+          <Text style={styles.priceNote}>{priceNote}</Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -73,9 +89,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.lg,
-    ...shadow.soft,
+    ...shadow.card,
   },
-  image: { width: "100%", height: 180, backgroundColor: colors.sand },
+  image: { width: "100%", height: 210, backgroundColor: colors.sand },
   badgeRow: {
     position: "absolute",
     top: spacing.sm,
@@ -94,8 +110,10 @@ const styles = StyleSheet.create({
   body: { padding: spacing.md },
   title: { ...typography.h3, color: colors.navy },
   location: { ...typography.small, color: colors.muted, marginTop: 2 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: spacing.sm },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", marginTop: spacing.sm, gap: spacing.md },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   meta: { ...typography.small, color: colors.navy },
-  metaDot: { ...typography.small, color: colors.muted, marginHorizontal: spacing.xs },
-  price: { ...typography.bodyMedium, color: colors.gold, marginTop: spacing.sm },
+  priceRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: spacing.sm },
+  price: { ...typography.h3, color: colors.gold },
+  priceNote: { ...typography.micro, color: colors.muted, textTransform: "none" },
 });

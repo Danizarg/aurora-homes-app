@@ -25,7 +25,7 @@ export default function SellScreen() {
         </Pressable>
         <Text style={styles.title}>Sell your property with agency-level presentation, without the agency process.</Text>
 
-        <Button label="Start with photos" size="lg" style={{ marginVertical: spacing.lg }} onPress={() => router.push({ pathname: "/create-listing", params: { intent: "sell" } })} />
+        <Button label="Start with photos" size="lg" style={{ marginVertical: spacing.lg }} onPress={() => router.push("/create-listing")} />
 
         {steps.map((s) => (
           <Card key={s.title} style={styles.stepCard}>

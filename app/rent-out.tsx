@@ -25,7 +25,7 @@ export default function RentOutScreen() {
         <Text style={styles.title}>Rent out your property professionally in minutes.</Text>
         <Text style={styles.subtitle}>Upload photos. Aurora creates the listing, exposé, FAQ, translations, and AI assistant.</Text>
 
-        <Button label="Start with photos" size="lg" style={{ marginVertical: spacing.lg }} onPress={() => router.push({ pathname: "/create-listing", params: { intent: "rent_out" } })} />
+        <Button label="Start with photos" size="lg" style={{ marginVertical: spacing.lg }} onPress={() => router.push("/create-listing")} />
 
         {benefits.map((b) => (
           <Card key={b.title} style={styles.benefitCard}>

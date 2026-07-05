@@ -11,8 +11,11 @@ export const hasRealAiKey = Boolean(
   process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY
 );
 
+export type Positioning = "rent_long" | "rent_holiday" | "sale";
+
 export interface ListingDraftInput {
   intent: "rent_out" | "sell";
+  positioning?: Positioning;
   propertyType: string;
   city: string;
   addressArea: string;
@@ -24,12 +27,68 @@ export interface ListingDraftInput {
   garage: boolean;
   petsAllowed: boolean;
   furnished: boolean;
+  terrace?: boolean;
+  garden?: boolean;
+  style?: string;
+  modernisationLevel?: string;
+  kitchenStyle?: string;
   priceMonthly?: number;
   priceSale?: number;
   utilitiesMonthly?: number;
   deposit?: number;
   ownerRules?: string;
   notes?: string;
+}
+
+export interface DetectedFeatures {
+  pool: boolean;
+  seaView: boolean;
+  terrace: boolean;
+  garden: boolean;
+  furnished: boolean;
+  style: string;
+  modernisationLevel: string;
+  kitchenStyle: string;
+}
+
+/**
+ * Mock computer-vision pass over the uploaded photos. Real integrations
+ * would send the photo URIs to a vision model here and map its response
+ * onto DetectedFeatures — the shape below is what the rest of the app
+ * (the AI chat + generateListingContent) already expects.
+ */
+export function detectFeaturesFromPhotos(addressHint: string, photoCount: number): DetectedFeatures {
+  let hash = 0;
+  for (const char of `${addressHint}-${photoCount}`) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+
+  const styles = ["Modern coastal", "Classic Andalusian", "Minimalist contemporary", "Warm Mediterranean"];
+  const modernisationLevels = ["Recently renovated", "Well maintained", "Move-in ready", "Tastefully updated"];
+  const kitchenStyles = ["Open-plan modern kitchen", "Fully equipped kitchen", "Bright kitchen with breakfast bar"];
+
+  return {
+    pool: hash % 3 === 0,
+    seaView: hash % 2 === 0,
+    terrace: hash % 4 !== 3,
+    garden: hash % 5 === 0,
+    furnished: hash % 3 !== 1,
+    style: styles[hash % styles.length],
+    modernisationLevel: modernisationLevels[hash % modernisationLevels.length],
+    kitchenStyle: kitchenStyles[hash % kitchenStyles.length],
+  };
+}
+
+/** Builds the AI's opening observation message from detected features. */
+export function describeDetectedFeatures(detected: DetectedFeatures): string {
+  const spotted: string[] = ["a bright living room"];
+  if (detected.terrace) spotted.push("a private terrace");
+  spotted.push(detected.kitchenStyle.toLowerCase());
+  if (detected.pool) spotted.push("a pool");
+  if (detected.seaView) spotted.push("a sea view");
+  if (detected.garden) spotted.push("a garden");
+
+  const last = spotted.pop();
+  const list = spotted.length ? `${spotted.join(", ")}, and ${last}` : last;
+  return `I can already see ${list}. ${detected.style}, ${detected.modernisationLevel.toLowerCase()}.`;
 }
 
 const TRANSLATION_LANGS = ["English", "German", "Spanish", "French", "Italian", "Dutch"] as const;
@@ -42,9 +101,12 @@ function featureList(input: ListingDraftInput): string[] {
   ];
   if (input.pool) features.push("Private or shared pool access");
   if (input.seaView) features.push("Sea view");
+  if (input.terrace) features.push("Private terrace");
+  if (input.garden) features.push("Garden");
   if (input.garage) features.push("Private garage");
   if (input.petsAllowed) features.push("Pets allowed");
   if (input.furnished) features.push("Fully furnished");
+  if (input.kitchenStyle) features.push(input.kitchenStyle);
   return features;
 }
 
@@ -120,15 +182,17 @@ export async function generateListingContent(
     lifestyle_paragraph: `Living in ${input.city} means easy access to local cafés, walkable streets, and an authentic Spanish lifestyle just steps from ${locationLabel}.`,
     location_paragraph: `Located in ${locationLabel}, this property is well connected to the city centre and everyday amenities.`,
     ideal_profile:
-      input.intent === "sell"
+      input.positioning === "sale" || input.intent === "sell"
         ? "Ideal for buyers looking for a long-term home or investment in a well-connected area."
+        : input.positioning === "rent_holiday"
+        ? "Ideal for holidaymakers looking for a comfortable short stay with hotel-free flexibility."
         : "Ideal for tenants seeking a comfortable, move-in-ready home with transparent pricing.",
     price_explanation: priceExplanation(input),
     faq: buildFaq(input),
     agent_knowledge_base: [
       `Location: ${locationLabel}`,
       `Bedrooms: ${input.bedrooms}, Bathrooms: ${input.bathrooms}, Size: ${input.sizeM2} m²`,
-      `Pool: ${input.pool ? "yes" : "no"}, Sea view: ${input.seaView ? "yes" : "no"}, Garage: ${input.garage ? "yes" : "no"}`,
+      `Pool: ${input.pool ? "yes" : "no"}, Sea view: ${input.seaView ? "yes" : "no"}, Garage: ${input.garage ? "yes" : "no"}, Terrace: ${input.terrace ? "yes" : "no"}, Garden: ${input.garden ? "yes" : "no"}`,
       `Pets allowed: ${input.petsAllowed ? "yes" : "no"}, Furnished: ${input.furnished ? "yes" : "no"}`,
       input.ownerRules ? `Owner rules: ${input.ownerRules}` : "No special owner rules provided.",
     ],

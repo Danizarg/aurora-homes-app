@@ -1,13 +1,12 @@
 # Aurora Homes
 
-Professional Property Marketing. Powered by AI.
+Find your next home. Powered by AI.
 
-Aurora Homes is an AI-powered real estate marketing assistant and verified
-property marketplace, built as an Expo / React Native (TypeScript) app. Owners
-upload photos and Aurora generates a professional listing, exposé, FAQ,
-translations, and a dedicated AI property assistant. Renters and buyers get
-verified listings, transparent pricing, and 24/7 answers from each listing's
-AI agent.
+Aurora Homes is an AI-first home discovery and marketplace app, built as an
+Expo / React Native (TypeScript) app. Renters and buyers search verified
+homes with transparent pricing and a 24/7 AI property assistant on every
+listing. Owners upload photos and chat with Aurora, which builds the
+professional listing, exposé, FAQ, and translations for them.
 
 Aurora Homes is a pure intermediary marketplace in this MVP: no payments,
 escrow, rent collection, or legal/tax advice.
@@ -28,9 +27,9 @@ below).
 
 ```
 app/                    Expo Router screens (file-based routing)
-  (tabs)/                Bottom tab screens: Home, Search, Create, Messages, Profile
+  (tabs)/                Bottom tab screens: Home, Search, AI, Messages, Profile
   listing/[id].tsx        Listing detail + AI property agent
-  create-listing/          Multi-step AI listing wizard
+  create-listing/          AI Listing Builder (photos → address → price → AI chat → publish)
   messages/[id].tsx        Conversation detail
   auth/                    Login, signup, forgot password
   legal/                   Terms, privacy, disclaimer
@@ -50,22 +49,40 @@ supabase/schema.sql        Postgres schema + RLS policies
 
 ## Screens built
 
-Home, Search (Rent/Buy/Stay/Live modes + filters), Listing detail with AI
-agent chat, Create Listing wizard (intent → photos → facts → AI generation →
-exposé review → preview → publish), Rent Out, Sell, Messages inbox +
-conversation, Profile, Owner dashboard, Login/Signup/Forgot password,
-Contact, Trust & verification, Pricing, Terms/Privacy/Disclaimer.
+Home (discovery-first hero, search bar, visual carousel, quick paths, AI
+explainer, owner CTA), Search (Rent/Buy/Stay/Live modes + filters), Listing
+detail with AI agent chat, AI tab hub, AI Listing Builder (photos → address →
+price → AI chat → generation → review → preview → publish), Rent Out, Sell,
+Messages inbox + conversation, Profile, Owner dashboard, Login/Signup/Forgot
+password, Contact, Trust & verification, Pricing, Terms/Privacy/Disclaimer.
+
+## The AI Listing Builder
+
+Instead of a long form, owners go through three quick steps — upload photos,
+enter an address, optionally enter a price — then Aurora takes over in a
+chat interface:
+
+1. Aurora states what it can already see in the photos (mock computer-vision
+   detection: pool, sea view, terrace, garden, kitchen style, furnishing,
+   modernisation level — see `detectFeaturesFromPhotos` in `lib/ai/service.ts`).
+2. Aurora asks only for what it can't detect from photos: property type,
+   bedrooms, bathrooms, size, pets allowed, parking, and whether to position
+   the listing as a long-term rental, holiday stay, or sale.
+3. Aurora generates the full listing (title, exposé, FAQ, translations, price
+   breakdown, and the property's own AI assistant knowledge base) and the
+   owner reviews and publishes it.
 
 ## What's real vs. mock
 
-- **Real**: navigation, the full Create Listing wizard (image picking via
-  Expo Image Picker, form state, generated content review/edit), filters and
-  search logic, saved listings (persisted via AsyncStorage), local listing
-  publishing (persisted via AsyncStorage).
+- **Real**: navigation, the full AI Listing Builder flow (image picking via
+  Expo Image Picker, chat-style question flow, generated content
+  review/edit), filters and search logic, saved listings (persisted via
+  AsyncStorage), local listing publishing (persisted via AsyncStorage).
 - **Mock (by design, until you connect a backend)**: Spain-first sample
-  listings, conversations/messages, AI exposé/FAQ/translation generation, and
-  the per-listing AI agent's answers. All mock logic lives under `lib/mock`
-  and `lib/ai` so it can be swapped for real services without touching the UI.
+  listings, conversations/messages, AI photo feature detection, AI
+  exposé/FAQ/translation generation, and the per-listing AI agent's answers.
+  All mock logic lives under `lib/mock` and `lib/ai` so it can be swapped for
+  real services without touching the UI.
 
 ## Connecting Supabase
 

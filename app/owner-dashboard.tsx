@@ -33,7 +33,7 @@ export default function OwnerDashboardScreen() {
         </Pressable>
         <SectionHeader eyebrow="Owner dashboard" title="Manage your listings" />
 
-        <Button label="Add new listing" onPress={() => router.push("/(tabs)/create")} style={{ marginBottom: spacing.xl }} />
+        <Button label="Add new listing" onPress={() => router.push("/(tabs)/ai")} style={{ marginBottom: spacing.xl }} />
 
         <SectionHeader title={`Published listings (${published.length})`} />
         {published.length === 0 ? (

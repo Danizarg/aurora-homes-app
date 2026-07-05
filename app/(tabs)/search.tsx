@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Chip } from "../../components/ui/Chip";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -10,7 +10,7 @@ import { ListingCard } from "../../components/listings/ListingCard";
 import { mockListings } from "../../lib/mock/listings";
 import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
 import type { Listing, ListingMode } from "../../types";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 
 const modes: { key: ListingMode; label: string }[] = [
@@ -50,8 +50,9 @@ const defaultFilters: FiltersState = {
 };
 
 export default function SearchScreen() {
+  const { q } = useLocalSearchParams<{ q?: string }>();
   const [mode, setMode] = useState<ListingMode>("stay");
-  const [filters, setFilters] = useState<FiltersState>(defaultFilters);
+  const [filters, setFilters] = useState<FiltersState>(() => ({ ...defaultFilters, query: q ?? "" }));
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<"default" | "price_asc" | "price_desc">("default");
   const [savedIds, setSavedIds] = useState<string[]>([]);
@@ -61,6 +62,10 @@ export default function SearchScreen() {
       getSavedListingIds().then(setSavedIds);
     }, [])
   );
+
+  useEffect(() => {
+    if (q) setFilters((f) => ({ ...f, query: q }));
+  }, [q]);
 
   const isRental = mode === "rent" || mode === "stay" || mode === "live";
 
@@ -224,10 +229,10 @@ const styles = StyleSheet.create({
   searchInputWrap: {
     flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: colors.white,
     borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.md - 2, marginRight: spacing.sm, ...shadow.soft,
   },
   searchInput: { ...typography.body, color: colors.navy, marginLeft: spacing.sm, flex: 1 },
-  filterButton: { backgroundColor: colors.navy, borderRadius: radius.pill, padding: spacing.sm + 2 },
+  filterButton: { backgroundColor: colors.navy, borderRadius: radius.pill, padding: spacing.sm + 4, ...shadow.soft },
   sortRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
   resultsCount: { ...typography.small, color: colors.muted },
   sortLabel: { ...typography.small, color: colors.gold, fontWeight: "600" },
