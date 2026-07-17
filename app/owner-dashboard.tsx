@@ -11,6 +11,8 @@ import { SectionHeader } from "../components/ui/SectionHeader";
 import { EmptyState } from "../components/ui/EmptyState";
 import { getStoredListings } from "../lib/mock/storage";
 import { mockViewingRequests } from "../lib/mock/messages";
+import { getCurrentUserId } from "../lib/auth/service";
+import { fetchMyListings } from "../lib/supabase/listings";
 import type { Listing } from "../types";
 
 export default function OwnerDashboardScreen() {
@@ -18,7 +20,12 @@ export default function OwnerDashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      getStoredListings().then(setListings);
+      (async () => {
+        const localListings = await getStoredListings();
+        const userId = await getCurrentUserId();
+        const supabaseListings = userId ? await fetchMyListings(userId) : [];
+        setListings([...supabaseListings, ...localListings]);
+      })();
     }, [])
   );
 

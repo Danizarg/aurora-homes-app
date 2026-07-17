@@ -43,6 +43,7 @@ create table if not exists listings (
   sea_view boolean not null default false,
   garage boolean not null default false,
   furnished boolean not null default false,
+  faq jsonb not null default '[]',
   verified_owner boolean not null default false,
   verified_property boolean not null default false,
   last_verified_at timestamptz,
@@ -161,3 +162,40 @@ create policy "Profiles are viewable by everyone" on profiles
 
 create policy "Users can update their own profile" on profiles
   for update using (id = auth.uid());
+
+-- Auto-create a profile row whenever a new auth user is created (including
+-- anonymous sign-ins used by the app's demo publish flow), so listings.owner_id
+-- always has a matching profile to satisfy the foreign key above.
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, full_name, email)
+  values (new.id, coalesce(new.raw_user_meta_data ->> 'full_name', 'Aurora Homes user'), coalesce(new.email, ''))
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Storage bucket for listing photos uploaded via the AI Listing Builder.
+-- Objects are stored under `${auth.uid()}/${listingId}/${filename}` so the
+-- policies below can scope write access to the uploading user.
+insert into storage.buckets (id, name, public)
+values ('listing-images', 'listing-images', true)
+on conflict (id) do nothing;
+
+create policy "Public read access to listing images" on storage.objects
+  for select using (bucket_id = 'listing-images');
+
+create policy "Authenticated users can upload listing images" on storage.objects
+  for insert with check (bucket_id = 'listing-images' and auth.role() = 'authenticated');
+
+create policy "Owners can update their own listing images" on storage.objects
+  for update using (bucket_id = 'listing-images' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Owners can delete their own listing images" on storage.objects
+  for delete using (bucket_id = 'listing-images' and auth.uid()::text = (storage.foldername(name))[1]);

@@ -86,20 +86,33 @@ chat interface:
 
 ## Connecting Supabase
 
-1. Create a project at supabase.com.
-2. Run `supabase/schema.sql` in the Supabase SQL editor.
-3. Copy `.env.example` to `.env` and fill in:
-   ```
-   EXPO_PUBLIC_SUPABASE_URL=...
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=...
-   ```
-4. Restart `npx expo start`. `lib/supabase/client.ts` will detect the env
-   vars and `isSupabaseConfigured` becomes `true` — wire up the listing
-   publish/read calls in `app/create-listing/index.tsx` and `lib/mock/*` to
-   use `supabase` instead of AsyncStorage where you want persistence.
+The app is wired to a real Supabase project. To set one up from scratch:
 
-Without these env vars, the app keeps working via local mock storage — no
-code changes required.
+1. Create a project at supabase.com → **Settings → API**, copy the Project
+   URL and anon public key into `.env` (see `.env.example` for the variable
+   names). `.env` is gitignored — it's never committed.
+2. Open the **SQL Editor** in the Supabase dashboard, paste the contents of
+   `supabase/schema.sql`, and run it. This creates all tables, a
+   `listing-images` storage bucket with public-read/owner-write policies,
+   and a trigger that auto-creates a `profiles` row for every new auth user.
+3. Go to **Authentication → Providers** and enable **Anonymous sign-ins**.
+   The AI Listing Builder uses an anonymous Supabase session to own a
+   published listing so you can demo publishing without a full signup flow
+   (see `getOrCreateSupabaseUserId` in `lib/auth/service.ts`). Email/password
+   sign-in and sign-up already work too, via the existing Login/Signup
+   screens.
+4. Restart `npx expo start`.
+
+Once configured:
+- **Search** and **Home** read published listings from Supabase (merged with
+  the mock Spain-first catalog) via `lib/supabase/listings.ts`.
+- **AI Listing Builder** publish uploads photos to Supabase Storage and
+  inserts the listing + images into Postgres.
+- **Owner dashboard** shows listings owned by the signed-in Supabase user
+  alongside anything published locally.
+
+Without `.env` values, the app keeps working entirely on local mock data and
+AsyncStorage — no code changes required.
 
 ## Connecting a real AI model
 

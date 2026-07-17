@@ -38,3 +38,27 @@ export async function getCurrentSession(): Promise<MockSession | null> {
   }
   return getMockSession();
 }
+
+/** Read-only lookup of the current Supabase user id — does not create a session. */
+export async function getCurrentUserId(): Promise<string | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+/**
+ * Returns the current Supabase user id, signing in anonymously if nobody is
+ * signed in yet. This lets the AI Listing Builder publish a real, owned row
+ * (satisfying the owner_id foreign key + RLS policies in schema.sql) without
+ * forcing a demo user through the signup flow first. Requires "Anonymous
+ * sign-ins" to be enabled in Supabase Dashboard → Authentication → Providers.
+ */
+export async function getOrCreateSupabaseUserId(): Promise<string | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  if (data.session?.user) return data.session.user.id;
+
+  const { data: anon, error } = await supabase.auth.signInAnonymously();
+  if (error || !anon.user) return null;
+  return anon.user.id;
+}

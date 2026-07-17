@@ -30,6 +30,8 @@ import {
 import type { AiGeneratedContent, Listing } from "../../types";
 import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
+import { createListingInSupabase, uploadListingImages } from "../../lib/supabase/listings";
+import { getOrCreateSupabaseUserId } from "../../lib/auth/service";
 
 type WizardStep = "photos" | "address" | "price" | "chat" | "generating" | "review" | "preview" | "success";
 
@@ -125,6 +127,8 @@ export default function AiListingBuilder() {
   const [generated, setGenerated] = useState<AiGeneratedContent | null>(null);
   const [stageIndex, setStageIndex] = useState(0);
   const [publishedId, setPublishedId] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedToSupabase, setPublishedToSupabase] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -233,13 +237,12 @@ export default function AiListingBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  async function publish() {
+  function buildListing(id: string, ownerId: string, imageUris: string[]): Listing {
     const input = draftInput();
     const now = new Date().toISOString();
-    const id = `local-${Date.now()}`;
-    const listing: Listing = {
+    return {
       id,
-      owner_id: "me",
+      owner_id: ownerId,
       mode: input.intent === "sell" ? "buy" : input.positioning === "rent_holiday" ? "stay" : "rent",
       intent: input.intent,
       title: generated?.title ?? "New Aurora listing",
@@ -268,17 +271,42 @@ export default function AiListingBuilder() {
       verified_owner: false,
       verified_property: false,
       status: "published",
-      images: images.map((uri, i) => ({ id: `${id}-img-${i}`, listing_id: id, uri, position: i })),
+      images: imageUris.map((uri, i) => ({ id: `${id}-img-${i}`, listing_id: id, uri, position: i })),
       faq: generated?.faq ?? [],
       created_at: now,
       updated_at: now,
     };
-    // Supabase upload path would go here when isSupabaseConfigured is true —
-    // see lib/supabase/client.ts. Falling back to local mock storage keeps
-    // this flow fully demoable with no backend.
+  }
+
+  async function publish() {
+    setPublishing(true);
+
+    if (isSupabaseConfigured) {
+      const ownerId = await getOrCreateSupabaseUserId();
+      if (ownerId) {
+        const tempId = `${Date.now()}`;
+        const uploadedUrls = await uploadListingImages(ownerId, tempId, images);
+        const draftListing = buildListing(tempId, ownerId, uploadedUrls);
+        const supabaseId = await createListingInSupabase(draftListing, ownerId);
+        if (supabaseId) {
+          setPublishedId(supabaseId);
+          setPublishedToSupabase(true);
+          setStep("success");
+          setPublishing(false);
+          return;
+        }
+      }
+    }
+
+    // Falls back to local mock storage when Supabase isn't configured, or if
+    // the Supabase write failed (e.g. anonymous sign-ins not enabled yet) —
+    // keeps the flow fully demoable with no backend.
+    const id = `local-${Date.now()}`;
+    const listing = buildListing(id, "me", images);
     await addStoredListing(listing);
     setPublishedId(id);
     setStep("success");
+    setPublishing(false);
   }
 
   const currentQuestion = questions[questionIndex];
@@ -475,7 +503,7 @@ export default function AiListingBuilder() {
               : `${Number(priceInput || 0).toLocaleString("en-GB")} €/month`}
           </Text>
           <Text style={styles.bullet}>{generated.short_summary}</Text>
-          <Button label="Publish listing" style={{ marginTop: spacing.xl }} onPress={publish} />
+          <Button label="Publish listing" style={{ marginTop: spacing.xl }} onPress={publish} loading={publishing} />
         </ScrollView>
       )}
 
@@ -484,7 +512,7 @@ export default function AiListingBuilder() {
           <Ionicons name="checkmark-circle" size={56} color={colors.success} />
           <Text style={styles.generatingTitle}>Your professional listing is ready.</Text>
           <Text style={styles.successSubtitle}>
-            {isSupabaseConfigured ? "Saved to Supabase." : "Saved locally on this device (mock storage)."}
+            {publishedToSupabase ? "Saved to Supabase." : "Saved locally on this device (mock storage)."}
           </Text>
           <Button
             label="View listing"

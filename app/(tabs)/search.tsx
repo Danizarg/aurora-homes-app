@@ -9,6 +9,8 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { ListingCard } from "../../components/listings/ListingCard";
 import { mockListings } from "../../lib/mock/listings";
 import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
+import { isSupabaseConfigured } from "../../lib/supabase/client";
+import { fetchPublishedListings } from "../../lib/supabase/listings";
 import type { Listing, ListingMode } from "../../types";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
@@ -56,10 +58,12 @@ export default function SearchScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<"default" | "price_asc" | "price_desc">("default");
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [supabaseListings, setSupabaseListings] = useState<Listing[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       getSavedListingIds().then(setSavedIds);
+      if (isSupabaseConfigured) fetchPublishedListings().then(setSupabaseListings);
     }, [])
   );
 
@@ -70,7 +74,7 @@ export default function SearchScreen() {
   const isRental = mode === "rent" || mode === "stay" || mode === "live";
 
   const results = useMemo(() => {
-    let list = mockListings.filter((l) => l.mode === mode);
+    let list = [...supabaseListings, ...mockListings].filter((l) => l.mode === mode);
     if (filters.query.trim()) {
       const q = filters.query.toLowerCase();
       list = list.filter(
@@ -93,7 +97,7 @@ export default function SearchScreen() {
       list = [...list].sort((a, b) => (b.price_monthly ?? b.price_sale ?? 0) - (a.price_monthly ?? a.price_sale ?? 0));
     }
     return list;
-  }, [mode, filters, sort]);
+  }, [mode, filters, sort, supabaseListings]);
 
   async function handleToggleSave(id: string) {
     const next = await toggleSavedListing(id);
