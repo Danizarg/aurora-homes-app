@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -310,6 +310,8 @@ export default function AiListingBuilder() {
   }
 
   const currentQuestion = questions[questionIndex];
+  const introSteps: WizardStep[] = ["photos", "address", "price"];
+  const introIndex = introSteps.indexOf(step);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -320,6 +322,14 @@ export default function AiListingBuilder() {
         <Text style={styles.headerTitle}>AI Listing Builder</Text>
         <View style={{ width: 22 }} />
       </View>
+
+      {introIndex >= 0 && (
+        <View style={styles.progressTrack}>
+          {introSteps.map((s, i) => (
+            <View key={s} style={[styles.progressSegment, i <= introIndex && styles.progressSegmentActive]} />
+          ))}
+        </View>
+      )}
 
       {step === "photos" && (
         <ScrollView contentContainerStyle={styles.content}>
@@ -571,13 +581,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { ...typography.h3, color: colors.navy },
+  progressTrack: { flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },
+  progressSegmentActive: { backgroundColor: colors.gold },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   photoGrid: { flexDirection: "row", flexWrap: "wrap" },
-  photoTile: { width: "31%", aspectRatio: 1, marginRight: "3.5%", marginBottom: spacing.sm, borderRadius: radius.md, overflow: "hidden" },
+  photoTile: { width: "31%", aspectRatio: 1, marginRight: "3.5%", marginBottom: spacing.sm, borderRadius: radius.lg, overflow: "hidden", ...shadow.soft },
   photoImage: { width: "100%", height: "100%" },
   removePhoto: { position: "absolute", top: 4, right: 4, backgroundColor: "rgba(27,36,48,0.7)", borderRadius: radius.pill, padding: 3 },
   addPhotoTile: {
-    width: "31%", aspectRatio: 1, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.gold, borderStyle: "dashed",
+    width: "31%", aspectRatio: 1, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.gold, borderStyle: "dashed",
     alignItems: "center", justifyContent: "center", backgroundColor: colors.white,
   },
   addPhotoLabel: { ...typography.micro, color: colors.gold, marginTop: spacing.xs, textTransform: "none" },
