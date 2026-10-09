@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   hero: {
     alignItems: "center", backgroundColor: colors.white, borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.xl, marginBottom: spacing.xl, ...shadow.soft,
+    padding: spacing.xl, marginBottom: spacing.xl, ...shadow.card,
   },
   heroTitle: { ...typography.h1, color: colors.navy, textAlign: "center", marginTop: spacing.md },
   heroSubtitle: { ...typography.body, color: colors.muted, textAlign: "center", marginTop: spacing.sm },
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: "row", marginBottom: spacing.lg },
   stepTitle: { ...typography.bodyMedium, color: colors.navy },
   stepBody: { ...typography.small, color: colors.muted, marginTop: 2 },
-  exampleImage: { width: "100%", height: 160, borderRadius: radius.md, marginBottom: spacing.md, backgroundColor: colors.sand },
+  exampleImage: { width: "100%", height: 180, borderRadius: radius.lg, marginBottom: spacing.md, backgroundColor: colors.sand },
   exampleTitle: { ...typography.h3, color: colors.navy },
   exampleSummary: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
   exampleLink: { ...typography.bodyMedium, color: colors.gold, marginTop: spacing.sm },
