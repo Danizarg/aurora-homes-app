@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 
 interface BadgeProps {
   label: string;
-  tone?: "gold" | "navy" | "terracotta" | "success" | "muted";
+  tone?: "gold" | "navy" | "terracotta" | "success" | "muted" | "light";
 }
 
 const toneStyles: Record<string, { bg: string; fg: string }> = {
@@ -12,12 +12,13 @@ const toneStyles: Record<string, { bg: string; fg: string }> = {
   terracotta: { bg: colors.terracottaSoft, fg: colors.navy },
   success: { bg: "#E1EDE4", fg: colors.success },
   muted: { bg: colors.ivoryDeep, fg: colors.muted },
+  light: { bg: "rgba(255,255,255,0.94)", fg: colors.navy },
 };
 
 export function Badge({ label, tone = "gold" }: BadgeProps) {
   const t = toneStyles[tone];
   return (
-    <View style={[styles.badge, { backgroundColor: t.bg }]}>
+    <View style={[styles.badge, { backgroundColor: t.bg }, tone === "light" && shadow.float]}>
       <Text style={[styles.label, { color: t.fg }]}>{label}</Text>
     </View>
   );
