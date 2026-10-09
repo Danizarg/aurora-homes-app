@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { answerAgentQuestion } from "../../lib/ai/service";
 import type { FaqItem } from "../../types";
 
@@ -43,7 +43,9 @@ export function PropertyAgentPanel({ listingTitle, faq }: PropertyAgentPanelProp
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={16} color={colors.gold} />
+        <View style={styles.headerIcon}>
+          <Ionicons name="sparkles" size={14} color={colors.gold} />
+        </View>
         <Text style={styles.headerText}>Property AI Assistant</Text>
       </View>
 
@@ -81,25 +83,29 @@ export function PropertyAgentPanel({ listingTitle, faq }: PropertyAgentPanelProp
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: colors.ivoryDeep, borderRadius: radius.lg, padding: spacing.md },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: spacing.sm, gap: spacing.xs },
+  wrap: { backgroundColor: colors.ivoryDeep, borderRadius: radius.xl, padding: spacing.lg },
+  header: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md, gap: spacing.sm },
+  headerIcon: {
+    width: 26, height: 26, borderRadius: radius.pill, backgroundColor: colors.white,
+    alignItems: "center", justifyContent: "center",
+  },
   headerText: { ...typography.bodyMedium, color: colors.navy },
-  messages: { maxHeight: 220, marginBottom: spacing.sm },
-  bubble: { padding: spacing.sm, borderRadius: radius.md, marginBottom: spacing.sm, maxWidth: "85%" },
+  messages: { maxHeight: 220, marginBottom: spacing.md },
+  bubble: { padding: spacing.sm + 2, borderRadius: radius.lg, marginBottom: spacing.sm, maxWidth: "85%", ...shadow.float },
   bubbleAgent: { backgroundColor: colors.white, alignSelf: "flex-start" },
   bubbleUser: { backgroundColor: colors.navy, alignSelf: "flex-end" },
   bubbleTextAgent: { ...typography.small, color: colors.navy },
   bubbleTextUser: { ...typography.small, color: colors.white },
   suggestions: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.sm },
   suggestionChip: {
-    backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm,
-    marginRight: spacing.xs, marginBottom: spacing.xs, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: spacing.xs + 1, paddingHorizontal: spacing.sm + 2,
+    marginRight: spacing.xs, marginBottom: spacing.xs, ...shadow.float,
   },
   suggestionText: { ...typography.micro, color: colors.navy, textTransform: "none" },
   inputRow: { flexDirection: "row", alignItems: "center" },
   input: {
     flex: 1, backgroundColor: colors.white, borderRadius: radius.pill, paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm, marginRight: spacing.sm, borderWidth: 1, borderColor: colors.border, color: colors.navy,
+    paddingVertical: spacing.sm + 2, marginRight: spacing.sm, color: colors.navy, ...shadow.float,
   },
-  sendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, padding: spacing.sm + 2 },
+  sendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, padding: spacing.sm + 4, ...shadow.float },
 });

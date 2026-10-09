@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View, Dimensions } from
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -68,19 +68,19 @@ export default function ListingDetailScreen() {
             {isRental ? `${listing.price_monthly?.toLocaleString("en-GB")} €/month` : `${listing.price_sale?.toLocaleString("en-GB")} €`}
           </Text>
 
-          <Card style={styles.verificationCard}>
-            <View style={styles.verificationRow}>
-              <Ionicons name={listing.verified_owner ? "checkmark-circle" : "close-circle-outline"} size={18} color={listing.verified_owner ? colors.success : colors.muted} />
-              <Text style={styles.verificationText}>Owner {listing.verified_owner ? "verified" : "not yet verified"}</Text>
+          <View style={styles.trustRow}>
+            <View style={styles.trustChip}>
+              <Ionicons name={listing.verified_owner ? "checkmark-circle" : "close-circle-outline"} size={16} color={listing.verified_owner ? colors.success : colors.muted} />
+              <Text style={styles.trustChipText}>Owner {listing.verified_owner ? "verified" : "unverified"}</Text>
             </View>
-            <View style={styles.verificationRow}>
-              <Ionicons name={listing.verified_property ? "checkmark-circle" : "close-circle-outline"} size={18} color={listing.verified_property ? colors.success : colors.muted} />
-              <Text style={styles.verificationText}>Property {listing.verified_property ? "verified" : "not yet verified"}</Text>
+            <View style={styles.trustChip}>
+              <Ionicons name={listing.verified_property ? "checkmark-circle" : "close-circle-outline"} size={16} color={listing.verified_property ? colors.success : colors.muted} />
+              <Text style={styles.trustChipText}>Property {listing.verified_property ? "verified" : "unverified"}</Text>
             </View>
-            {listing.last_verified_at ? (
-              <Text style={styles.verificationMeta}>Last checked {listing.last_verified_at}</Text>
-            ) : null}
-          </Card>
+          </View>
+          {listing.last_verified_at ? (
+            <Text style={styles.verificationMeta}>Last checked {listing.last_verified_at}</Text>
+          ) : null}
 
           {isRental ? (
             <Card style={{ marginTop: spacing.lg }}>
@@ -197,12 +197,12 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.ivory },
   notFound: { padding: spacing.lg, ...typography.body, color: colors.navy },
   backButton: {
-    position: "absolute", top: spacing.md, left: spacing.md, backgroundColor: colors.white,
-    borderRadius: radius.pill, padding: spacing.sm,
+    position: "absolute", top: spacing.md, left: spacing.md, backgroundColor: "rgba(255,255,255,0.94)",
+    borderRadius: radius.pill, padding: spacing.sm, ...shadow.float,
   },
   galleryScrim: {
-    position: "absolute", bottom: 0, left: 0, right: 0, height: 90,
-    backgroundColor: "rgba(27,36,48,0.28)",
+    position: "absolute", bottom: 0, left: 0, right: 0, height: 100,
+    backgroundColor: "rgba(27,36,48,0.3)",
   },
   galleryCounter: {
     position: "absolute", bottom: spacing.md, right: spacing.md,
@@ -213,13 +213,16 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.6)", marginHorizontal: 3 },
   dotActive: { backgroundColor: colors.white, width: 8, height: 8, borderRadius: 4 },
   content: { padding: spacing.lg },
-  title: { ...typography.h1, color: colors.navy, marginTop: spacing.sm },
+  title: { ...typography.h1, color: colors.navy, marginTop: spacing.md },
   location: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
-  price: { ...typography.h2, color: colors.gold, marginTop: spacing.sm },
-  verificationCard: { marginTop: spacing.lg },
-  verificationRow: { flexDirection: "row", alignItems: "center", marginBottom: spacing.xs, gap: spacing.xs },
-  verificationText: { ...typography.small, color: colors.navy },
-  verificationMeta: { ...typography.micro, color: colors.muted, marginTop: spacing.xs, textTransform: "none" },
+  price: { ...typography.h2, color: colors.navy, marginTop: spacing.sm },
+  trustRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.lg },
+  trustChip: {
+    flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.white,
+    borderRadius: radius.pill, paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.sm + 2, ...shadow.soft,
+  },
+  trustChipText: { ...typography.small, color: colors.navy, fontWeight: "600" },
+  verificationMeta: { ...typography.micro, color: colors.muted, marginTop: spacing.sm, textTransform: "none" },
   priceModuleTitle: { ...typography.h3, color: colors.navy, marginBottom: spacing.sm },
   priceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs },
   priceLabel: { ...typography.small, color: colors.muted },

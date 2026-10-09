@@ -73,21 +73,17 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Simple company message */}
-        <View style={styles.messageBlock}>
-          <Text style={styles.messageTitle}>Find. Sell. Rent.</Text>
-          <Text style={styles.messageSubtitle}>Everything else is done by AI.</Text>
-        </View>
-
         {/* Four quick paths */}
         <View style={styles.actionsGrid}>
           {quickPaths.map((action) => (
             <Pressable
               key={action.key}
-              style={styles.actionCard}
+              style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
               onPress={() => router.push(action.route as never)}
             >
-              <Ionicons name={action.icon} size={22} color={colors.gold} />
+              <View style={styles.actionIconWrap}>
+                <Ionicons name={action.icon} size={20} color={colors.gold} />
+              </View>
               <Text style={styles.actionTitle}>{action.title}</Text>
               <Text style={styles.actionMicro}>{action.micro}</Text>
             </Pressable>
@@ -96,7 +92,9 @@ export default function HomeScreen() {
 
         {/* AI feature explanation */}
         <Card style={styles.aiCard}>
-          <Ionicons name="sparkles" size={22} color={colors.gold} />
+          <View style={styles.actionIconWrap}>
+            <Ionicons name="sparkles" size={20} color={colors.gold} />
+          </View>
           <Text style={styles.aiCardTitle}>Upload photos. Aurora creates the listing.</Text>
           <Text style={styles.aiCardBody}>
             Exposé, FAQ, translations, and a dedicated property assistant — generated automatically.
@@ -165,41 +163,43 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.ivory },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  hero: { marginTop: spacing.sm, marginBottom: spacing.md },
+  hero: { marginTop: spacing.md, marginBottom: spacing.lg },
   heroTitle: { ...typography.display, color: colors.navy },
   heroTitleAccent: { ...typography.display, color: colors.gold },
   searchPrompt: { ...typography.h3, color: colors.navy, marginBottom: spacing.sm },
   searchBar: {
     flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderRadius: radius.pill,
-    borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-    marginBottom: spacing.lg, ...shadow.soft,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md + 2,
+    marginBottom: spacing.xl, ...shadow.card,
   },
   searchInput: { ...typography.body, color: colors.navy, marginLeft: spacing.sm, flex: 1 },
-  carousel: { marginBottom: spacing.xl, marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
-  carouselCard: { width: 220, height: 260, borderRadius: radius.lg, overflow: "hidden", marginRight: spacing.md, backgroundColor: colors.sand },
+  carousel: { marginBottom: spacing.xxl, marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
+  carouselCard: { width: 232, height: 280, borderRadius: radius.xl, overflow: "hidden", marginRight: spacing.md, backgroundColor: colors.sand, ...shadow.soft },
   carouselImage: { width: "100%", height: "100%" },
   carouselOverlay: {
     position: "absolute", bottom: 0, left: 0, right: 0, padding: spacing.md,
-    backgroundColor: "rgba(27,36,48,0.55)",
+    backgroundColor: "rgba(27,36,48,0.5)",
   },
   carouselCity: { ...typography.micro, color: colors.goldSoft, textTransform: "uppercase" },
   carouselTitle: { ...typography.bodyMedium, color: colors.white, marginTop: 2 },
-  messageBlock: { alignItems: "center", marginBottom: spacing.xl, paddingVertical: spacing.md },
-  messageTitle: { ...typography.h1, color: colors.navy, textAlign: "center" },
-  messageSubtitle: { ...typography.body, color: colors.gold, textAlign: "center", marginTop: spacing.xs, fontWeight: "600" },
   actionsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: spacing.xl },
   actionCard: {
-    width: "48%", backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.md, ...shadow.soft,
+    width: "48%", backgroundColor: colors.white, borderRadius: radius.xl,
+    padding: spacing.lg, marginBottom: spacing.md, ...shadow.soft,
   },
-  actionTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.sm },
+  actionCardPressed: { opacity: 0.9 },
+  actionIconWrap: {
+    width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.sand,
+    alignItems: "center", justifyContent: "center",
+  },
+  actionTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.md },
   actionMicro: { ...typography.small, color: colors.muted },
   aiCard: { marginBottom: spacing.lg },
-  aiCardTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.sm },
+  aiCardTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.md },
   aiCardBody: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
   ownerCta: {
-    flexDirection: "row", alignItems: "center", backgroundColor: colors.navy, borderRadius: radius.lg,
-    padding: spacing.lg, marginBottom: spacing.xl,
+    flexDirection: "row", alignItems: "center", backgroundColor: colors.navy, borderRadius: radius.xl,
+    padding: spacing.lg, marginBottom: spacing.xl, ...shadow.card,
   },
   ownerCtaTitle: { ...typography.h3, color: colors.white },
   ownerCtaMicro: { ...typography.small, color: colors.goldSoft, marginTop: 2 },
