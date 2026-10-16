@@ -28,19 +28,19 @@ export default function ContactScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
 
         {submitted ? (
           <View style={styles.successWrap}>
             <Ionicons name="checkmark-circle" size={48} color={colors.success} />
             <Text style={styles.successTitle}>Thanks for reaching out</Text>
-            <Text style={styles.subtitle}>We'll get back to you at {email} shortly.</Text>
+            <Text style={styles.subtitle}>We’ll get back to you at {email} shortly.</Text>
             <Button label="Back to home" style={{ marginTop: spacing.lg }} onPress={() => router.replace("/(tabs)")} />
           </View>
         ) : (
           <>
-            <Text style={styles.title}>Contact Aurora Homes</Text>
+            <Text style={styles.title}>Contact Zouza</Text>
             <Text style={styles.subtitle}>Have a question, or want to partner with us? Send a message below.</Text>
 
             <Text style={styles.label}>Name</Text>
@@ -74,16 +74,16 @@ export default function ContactScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { ...typography.h1, color: colors.navy },
+  title: { ...typography.h1, color: colors.ink },
   subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.lg },
-  label: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs, marginTop: spacing.md },
+  label: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs, marginTop: spacing.md },
   input: {
     backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.navy, ...typography.body,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, ...typography.body,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap" },
   successWrap: { alignItems: "center", paddingTop: spacing.xxl },
-  successTitle: { ...typography.h2, color: colors.navy, marginTop: spacing.md },
+  successTitle: { ...typography.h2, color: colors.ink, marginTop: spacing.md },
 });

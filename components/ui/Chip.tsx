@@ -30,12 +30,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   chipActive: {
-    backgroundColor: colors.navy,
-    borderColor: colors.navy,
+    backgroundColor: colors.brand900,
+    borderColor: colors.brand500,
   },
   label: {
     ...typography.small,
-    color: colors.navy,
+    color: colors.ink,
     fontWeight: "600",
   },
   labelActive: {

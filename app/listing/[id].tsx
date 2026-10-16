@@ -48,7 +48,7 @@ export default function ListingDetailScreen() {
           </ScrollView>
           <View style={styles.galleryScrim} />
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={20} color={colors.navy} />
+            <Ionicons name="chevron-back" size={20} color={colors.ink} />
           </Pressable>
           <View style={styles.galleryCounter}>
             <Text style={styles.galleryCounterText}>{galleryIndex + 1} / {listing.images.length}</Text>
@@ -88,16 +88,15 @@ export default function ListingDetailScreen() {
               <PriceRow label="Monthly rent" value={listing.price_monthly} />
               <PriceRow label="Utilities" value={listing.utilities_monthly} />
               <PriceRow label="Deposit" value={listing.deposit} />
-              <PriceRow label="Platform fee" value={undefined} display={`${listing.platform_fee_percent}%`} />
               <View style={styles.priceDivider} />
-              <PriceRow label="Total due at move-in" value={listing.total_move_in_cost} emphasize />
+              <PriceRow label="Total due at move-in" value={(listing.price_monthly ?? 0) + (listing.utilities_monthly ?? 0) + (listing.deposit ?? 0)} emphasize />
             </Card>
           ) : (
             <Card style={{ marginTop: spacing.lg }}>
               <Text style={styles.priceModuleTitle}>Purchase details</Text>
               <PriceRow label="Asking price" value={listing.price_sale} emphasize />
               <PriceRow label="Estimated purchase costs" value={undefined} display="10–13% (placeholder)" />
-              <Text style={styles.verificationMeta}>This is a direct-owner listing. Aurora Homes does not process payments or provide legal advice.</Text>
+              <Text style={styles.verificationMeta}>This is a direct-owner listing. Zouza does not process payments or provide legal advice.</Text>
             </Card>
           )}
 
@@ -145,8 +144,8 @@ export default function ListingDetailScreen() {
             </Card>
           ))}
 
-          <SectionHeader title="Ask the Property AI Agent" subtitle="Every Aurora Homes listing has its own assistant, trained on this property's data." />
-          <PropertyAgentPanel listingTitle={listing.title} faq={listing.faq} />
+          <SectionHeader title="Ask Suzi" subtitle="Every Zouza listing has its own assistant, trained on this property's data." />
+          <PropertyAgentPanel listing={listing} />
 
           {reviews.length > 0 && (
             <>
@@ -163,7 +162,7 @@ export default function ListingDetailScreen() {
             </>
           )}
 
-          <SectionHeader title="Contract template" subtitle="A standard template is available as a starting point. Aurora Homes does not provide legal advice — please review with a professional before signing." />
+          <SectionHeader title="Contract template" subtitle="A standard template is available as a starting point. Zouza does not provide legal advice — please review with a professional before signing." />
           <Card style={{ marginBottom: spacing.xl }}>
             <Text style={styles.faqA}>Contract template placeholder — available once a viewing is confirmed.</Text>
           </Card>
@@ -187,15 +186,15 @@ function PriceRow({ label, value, display, emphasize }: { label: string; value?:
 function Feature({ label, icon }: { label: string; icon: keyof typeof Ionicons.glyphMap }) {
   return (
     <View style={styles.featureItem}>
-      <Ionicons name={icon} size={18} color={colors.gold} />
+      <Ionicons name={icon} size={18} color={colors.brand500} />
       <Text style={styles.featureLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
-  notFound: { padding: spacing.lg, ...typography.body, color: colors.navy },
+  safe: { flex: 1, backgroundColor: colors.paper },
+  notFound: { padding: spacing.lg, ...typography.body, color: colors.ink },
   backButton: {
     position: "absolute", top: spacing.md, left: spacing.md, backgroundColor: "rgba(255,255,255,0.94)",
     borderRadius: radius.pill, padding: spacing.sm, ...shadow.float,
@@ -213,34 +212,34 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.6)", marginHorizontal: 3 },
   dotActive: { backgroundColor: colors.white, width: 8, height: 8, borderRadius: 4 },
   content: { padding: spacing.lg },
-  title: { ...typography.h1, color: colors.navy, marginTop: spacing.md },
+  title: { ...typography.h1, color: colors.ink, marginTop: spacing.md },
   location: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
-  price: { ...typography.h2, color: colors.navy, marginTop: spacing.sm },
+  price: { ...typography.h2, color: colors.ink, marginTop: spacing.sm },
   trustRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.lg },
   trustChip: {
     flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.white,
     borderRadius: radius.pill, paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.sm + 2, ...shadow.soft,
   },
-  trustChipText: { ...typography.small, color: colors.navy, fontWeight: "600" },
+  trustChipText: { ...typography.small, color: colors.ink, fontWeight: "600" },
   verificationMeta: { ...typography.micro, color: colors.muted, marginTop: spacing.sm, textTransform: "none" },
-  priceModuleTitle: { ...typography.h3, color: colors.navy, marginBottom: spacing.sm },
+  priceModuleTitle: { ...typography.h3, color: colors.ink, marginBottom: spacing.sm },
   priceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs },
   priceLabel: { ...typography.small, color: colors.muted },
-  priceLabelEmphasize: { color: colors.navy, fontWeight: "700" },
-  priceValue: { ...typography.small, color: colors.navy },
-  priceValueEmphasize: { ...typography.bodyMedium, color: colors.gold },
+  priceLabelEmphasize: { color: colors.ink, fontWeight: "700" },
+  priceValue: { ...typography.small, color: colors.ink },
+  priceValueEmphasize: { ...typography.bodyMedium, color: colors.brand600 },
   priceDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
   featuresGrid: { flexDirection: "row", flexWrap: "wrap" },
   featureItem: {
     flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radius.pill, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, marginRight: spacing.sm, marginBottom: spacing.sm, gap: spacing.xs,
   },
-  featureLabel: { ...typography.small, color: colors.navy },
-  description: { ...typography.body, color: colors.navy, lineHeight: 22 },
+  featureLabel: { ...typography.small, color: colors.ink },
+  description: { ...typography.body, color: colors.ink, lineHeight: 22 },
   actionsRow: { flexDirection: "row", marginTop: spacing.lg },
-  faqQ: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
+  faqQ: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs },
   faqA: { ...typography.small, color: colors.muted },
   reviewHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xs },
-  reviewAuthor: { ...typography.bodyMedium, color: colors.navy },
-  reviewRating: { color: colors.gold },
+  reviewAuthor: { ...typography.bodyMedium, color: colors.ink },
+  reviewRating: { color: colors.brand600 },
 });

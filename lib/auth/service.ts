@@ -48,7 +48,7 @@ export async function getCurrentUserId(): Promise<string | null> {
 
 /**
  * Returns the current Supabase user id, signing in anonymously if nobody is
- * signed in yet. This lets the AI Listing Builder publish a real, owned row
+ * signed in yet. This lets the List with Suzi publish a real, owned row
  * (satisfying the owner_id foreign key + RLS policies in schema.sql) without
  * forcing a demo user through the signup flow first. Requires "Anonymous
  * sign-ins" to be enabled in Supabase Dashboard → Authentication → Providers.

@@ -1,4 +1,4 @@
--- Aurora Homes Supabase schema.
+-- Zouza Supabase schema.
 -- Run this in the Supabase SQL editor (or via `supabase db push`) after
 -- creating a project. See .env.example for the client-side variables this
 -- schema pairs with, and lib/supabase/client.ts for the client setup.
@@ -33,7 +33,6 @@ create table if not exists listings (
   price_sale numeric,
   utilities_monthly numeric,
   deposit numeric,
-  platform_fee_percent numeric not null default 2,
   total_move_in_cost numeric,
   available_from date,
   minimum_stay text,
@@ -170,7 +169,7 @@ create or replace function public.handle_new_user()
 returns trigger as $$
 begin
   insert into public.profiles (id, full_name, email)
-  values (new.id, coalesce(new.raw_user_meta_data ->> 'full_name', 'Aurora Homes user'), coalesce(new.email, ''))
+  values (new.id, coalesce(new.raw_user_meta_data ->> 'full_name', 'Zouza user'), coalesce(new.email, ''))
   on conflict (id) do nothing;
   return new;
 end;
@@ -181,7 +180,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Storage bucket for listing photos uploaded via the AI Listing Builder.
+-- Storage bucket for listing photos uploaded via the List with Suzi.
 -- Objects are stored under `${auth.uid()}/${listingId}/${filename}` so the
 -- policies below can scope write access to the uploading user.
 insert into storage.buckets (id, name, public)

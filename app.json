@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Aurora Homes",
-    "slug": "aurora-homes-app",
+    "name": "Zouza",
+    "slug": "zouza",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "aurorahomes",
+    "scheme": "zouza",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aurorahomes.app"
+      "bundleIdentifier": "ai.zouza.app"
     },
     "android": {
-      "package": "com.aurorahomes.app",
+      "package": "ai.zouza.app",
       "adaptiveIcon": {
-        "backgroundColor": "#FBF7EE",
+        "backgroundColor": "#FAF9FC",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -30,15 +30,15 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FBF7EE",
-          "image": "./assets/icon.png",
-          "imageWidth": 160
+          "backgroundColor": "#FAF9FC",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Aurora Homes needs access to your photos so Aurora can generate a professional listing from them."
+          "photosPermission": "Zouza needs access to your photos so Suzi can write your listing from them."
         }
       ]
     ],

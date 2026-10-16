@@ -41,23 +41,23 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
-  headerTitle: { ...typography.h1, color: colors.navy },
+  headerTitle: { ...typography.h1, color: colors.ink },
   listContent: { paddingHorizontal: spacing.lg },
   row: {
     flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm,
   },
   avatar: {
-    width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.sand,
+    width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.paper2,
     alignItems: "center", justifyContent: "center", marginRight: spacing.md,
   },
-  avatarInitial: { ...typography.h3, color: colors.gold },
+  avatarInitial: { ...typography.h3, color: colors.brand600 },
   rowHeader: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  name: { ...typography.bodyMedium, color: colors.navy },
-  listingTitle: { ...typography.small, color: colors.gold, marginTop: 1 },
+  name: { ...typography.bodyMedium, color: colors.ink },
+  listingTitle: { ...typography.small, color: colors.brand600, marginTop: 1 },
   lastMessage: { ...typography.small, color: colors.muted, marginTop: 2 },
-  lastMessageUnread: { color: colors.navy, fontWeight: "600" },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.terracotta, marginLeft: spacing.sm },
+  lastMessageUnread: { color: colors.ink, fontWeight: "600" },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brand500, marginLeft: spacing.sm },
 });

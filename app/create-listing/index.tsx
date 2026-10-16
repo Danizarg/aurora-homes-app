@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { ZMark } from "../../components/brand/ZMark";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -22,11 +23,11 @@ import { SectionHeader } from "../../components/ui/SectionHeader";
 import {
   describeDetectedFeatures,
   detectFeaturesFromPhotos,
-  generateListingContent,
   type DetectedFeatures,
   type ListingDraftInput,
   type Positioning,
 } from "../../lib/ai/service";
+import { generateListing } from "../../lib/ai/suzi";
 import type { AiGeneratedContent, Listing } from "../../types";
 import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
@@ -214,6 +215,7 @@ export default function AiListingBuilder() {
       priceSale: intent === "sell" ? price : undefined,
       utilitiesMonthly: intent === "rent_out" ? Math.round(price * 0.12) : undefined,
       deposit: intent === "rent_out" ? price : undefined,
+      photoCount: images.length,
     };
   }
 
@@ -229,7 +231,7 @@ export default function AiListingBuilder() {
         return prev + 1;
       });
     }, 550);
-    generateListingContent(draftInput()).then((content) => {
+    generateListing(draftInput()).then((content) => {
       setGenerated(content);
       setTimeout(() => setStep("review"), generationStages.length * 550 + 300);
     });
@@ -245,7 +247,7 @@ export default function AiListingBuilder() {
       owner_id: ownerId,
       mode: input.intent === "sell" ? "buy" : input.positioning === "rent_holiday" ? "stay" : "rent",
       intent: input.intent,
-      title: generated?.title ?? "New Aurora listing",
+      title: generated?.title ?? "New listing",
       description: generated?.long_description ?? "",
       city: input.city,
       country: "Spain",
@@ -258,7 +260,6 @@ export default function AiListingBuilder() {
       price_sale: input.priceSale,
       utilities_monthly: input.utilitiesMonthly,
       deposit: input.deposit,
-      platform_fee_percent: 2,
       total_move_in_cost:
         input.intent === "rent_out"
           ? (input.priceMonthly ?? 0) + (input.utilitiesMonthly ?? 0) + (input.deposit ?? 0)
@@ -317,9 +318,9 @@ export default function AiListingBuilder() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Pressable onPress={() => (step === "photos" ? router.back() : goBack())} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
-        <Text style={styles.headerTitle}>AI Listing Builder</Text>
+        <Text style={styles.headerTitle}>List with Suzi</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -333,7 +334,7 @@ export default function AiListingBuilder() {
 
       {step === "photos" && (
         <ScrollView contentContainerStyle={styles.content}>
-          <SectionHeader eyebrow="Step 1 of 3" title="Upload photos" subtitle="Aurora works best with 5–15 clear photos of the interior, exterior, and key rooms." />
+          <SectionHeader eyebrow="Step 1 of 3" title="Upload photos" subtitle="Suzi works best with 5–15 clear photos of the interior, exterior, and key rooms." />
           <View style={styles.photoGrid}>
             {images.map((uri) => (
               <View key={uri} style={styles.photoTile}>
@@ -344,13 +345,13 @@ export default function AiListingBuilder() {
               </View>
             ))}
             <Pressable style={styles.addPhotoTile} onPress={pickImages}>
-              <Ionicons name="camera-outline" size={26} color={colors.gold} />
+              <Ionicons name="camera-outline" size={26} color={colors.brand500} />
               <Text style={styles.addPhotoLabel}>Add photos</Text>
             </Pressable>
           </View>
           {images.length === 0 && (
             <Card style={{ marginTop: spacing.md }}>
-              <Text style={styles.emptyPhotoText}>No photos yet. Tap "Add photos" to select images from your library — Aurora will use them to write your listing.</Text>
+              <Text style={styles.emptyPhotoText}>No photos yet. Tap “Add photos” to select images from your library — Suzi will use them to write your listing.</Text>
             </Card>
           )}
           <Button
@@ -364,7 +365,7 @@ export default function AiListingBuilder() {
 
       {step === "address" && (
         <ScrollView contentContainerStyle={styles.content}>
-          <SectionHeader eyebrow="Step 2 of 3" title="Enter address" subtitle="Just the area or city — Aurora will handle the rest." />
+          <SectionHeader eyebrow="Step 2 of 3" title="Enter address" subtitle="Just the area or city — Suzi will handle the rest." />
           <TextField label="Address" value={address} onChangeText={setAddress} placeholder="e.g. Golden Mile, Marbella" />
           <Button label="Continue" style={{ marginTop: spacing.xl }} disabled={!address.trim()} onPress={() => setStep("price")} />
         </ScrollView>
@@ -372,9 +373,9 @@ export default function AiListingBuilder() {
 
       {step === "price" && (
         <ScrollView contentContainerStyle={styles.content}>
-          <SectionHeader eyebrow="Step 3 of 3" title="Price (optional)" subtitle="You can leave this blank and set it later — Aurora will still build the full listing." />
+          <SectionHeader eyebrow="Step 3 of 3" title="Price (optional)" subtitle="You can leave this blank and set it later — Suzi will still build the full listing." />
           <TextField label="Price (€)" value={priceInput} onChangeText={setPriceInput} keyboardType="number-pad" placeholder="e.g. 1200" />
-          <Button label="Let Aurora take over" style={{ marginTop: spacing.xl }} onPress={startChat} />
+          <Button label="Let Suzi take over" style={{ marginTop: spacing.xl }} onPress={startChat} />
         </ScrollView>
       )}
 
@@ -387,7 +388,7 @@ export default function AiListingBuilder() {
           >
             {messages.map((m) => (
               <View key={m.id} style={[styles.bubble, m.from === "ai" ? styles.bubbleAi : styles.bubbleUser]}>
-                {m.from === "ai" ? <Text style={styles.aiLabel}>Aurora AI</Text> : null}
+                {m.from === "ai" ? <Text style={styles.aiLabel}>Suzi</Text> : null}
                 <Text style={m.from === "ai" ? styles.bubbleTextAi : styles.bubbleTextUser}>{m.text}</Text>
               </View>
             ))}
@@ -430,14 +431,14 @@ export default function AiListingBuilder() {
 
       {step === "generating" && (
         <View style={styles.generatingWrap}>
-          <Ionicons name="sparkles" size={40} color={colors.gold} />
-          <Text style={styles.generatingTitle}>Aurora is building your listing</Text>
+          <ZMark size={40} color={colors.brand500} />
+          <Text style={styles.generatingTitle}>Suzi is building your listing</Text>
           {generationStages.map((stage, i) => (
             <View key={stage} style={styles.stageRow}>
               <Ionicons
                 name={i < stageIndex ? "checkmark-circle" : i === stageIndex ? "ellipse" : "ellipse-outline"}
                 size={18}
-                color={i <= stageIndex ? colors.gold : colors.border}
+                color={i <= stageIndex ? colors.brand600 : colors.border}
               />
               <Text style={[styles.stageText, i <= stageIndex && styles.stageTextActive]}>{stage}</Text>
             </View>
@@ -447,7 +448,7 @@ export default function AiListingBuilder() {
 
       {step === "review" && generated && (
         <ScrollView contentContainerStyle={styles.content}>
-          <SectionHeader eyebrow="Review" title="Review your exposé" subtitle="Everything below was generated by Aurora. Edit anything before publishing." />
+          <SectionHeader eyebrow="Review" title="Review your exposé" subtitle="Everything below was generated by Suzi. Edit anything before publishing." />
           <TextField label="Title" value={generated.title} onChangeText={(v) => setGenerated({ ...generated, title: v })} />
           <TextField label="Short summary" value={generated.short_summary} onChangeText={(v) => setGenerated({ ...generated, short_summary: v })} multiline />
           <TextField label="Long description" value={generated.long_description} onChangeText={(v) => setGenerated({ ...generated, long_description: v })} multiline />
@@ -483,7 +484,7 @@ export default function AiListingBuilder() {
             </Card>
           ))}
 
-          <FieldLabel label="Property AI agent knowledge base" />
+          <FieldLabel label="What Suzi knows about this property" />
           <Card style={{ marginBottom: spacing.md }}>
             {generated.agent_knowledge_base.map((k) => (
               <Text key={k} style={styles.bullet}>• {k}</Text>
@@ -575,61 +576,61 @@ function TextField({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  headerTitle: { ...typography.h3, color: colors.navy },
+  headerTitle: { ...typography.h3, color: colors.ink },
   progressTrack: { flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },
-  progressSegmentActive: { backgroundColor: colors.gold },
+  progressSegmentActive: { backgroundColor: colors.brand500 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   photoGrid: { flexDirection: "row", flexWrap: "wrap" },
   photoTile: { width: "31%", aspectRatio: 1, marginRight: "3.5%", marginBottom: spacing.sm, borderRadius: radius.lg, overflow: "hidden", ...shadow.soft },
   photoImage: { width: "100%", height: "100%" },
   removePhoto: { position: "absolute", top: 4, right: 4, backgroundColor: "rgba(27,36,48,0.7)", borderRadius: radius.pill, padding: 3 },
   addPhotoTile: {
-    width: "31%", aspectRatio: 1, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.gold, borderStyle: "dashed",
+    width: "31%", aspectRatio: 1, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.brand500, borderStyle: "dashed",
     alignItems: "center", justifyContent: "center", backgroundColor: colors.white,
   },
-  addPhotoLabel: { ...typography.micro, color: colors.gold, marginTop: spacing.xs, textTransform: "none" },
+  addPhotoLabel: { ...typography.micro, color: colors.brand600, marginTop: spacing.xs, textTransform: "none" },
   emptyPhotoText: { ...typography.small, color: colors.muted },
-  fieldLabel: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
+  fieldLabel: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs },
   input: {
     backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.navy, ...typography.body,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, ...typography.body,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.md },
   generatingWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
-  generatingTitle: { ...typography.h2, color: colors.navy, marginTop: spacing.md, marginBottom: spacing.lg, textAlign: "center" },
+  generatingTitle: { ...typography.h2, color: colors.ink, marginTop: spacing.md, marginBottom: spacing.lg, textAlign: "center" },
   stageRow: { flexDirection: "row", alignItems: "center", alignSelf: "stretch", marginBottom: spacing.sm, gap: spacing.sm },
   stageText: { ...typography.body, color: colors.border },
-  stageTextActive: { color: colors.navy },
-  bullet: { ...typography.small, color: colors.navy },
-  faqQ: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
-  previewImage: { width: "100%", height: 200, borderRadius: radius.lg, marginBottom: spacing.md, backgroundColor: colors.sand },
-  previewTitle: { ...typography.h1, color: colors.navy },
+  stageTextActive: { color: colors.ink },
+  bullet: { ...typography.small, color: colors.ink },
+  faqQ: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs },
+  previewImage: { width: "100%", height: 200, borderRadius: radius.lg, marginBottom: spacing.md, backgroundColor: colors.paper2 },
+  previewTitle: { ...typography.h1, color: colors.ink },
   previewLocation: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
-  previewPrice: { ...typography.h2, color: colors.gold, marginTop: spacing.sm, marginBottom: spacing.md },
+  previewPrice: { ...typography.h2, color: colors.brand600, marginTop: spacing.sm, marginBottom: spacing.md },
   successSubtitle: { ...typography.body, color: colors.muted, textAlign: "center" },
   chatContent: { padding: spacing.lg, paddingBottom: spacing.md },
   bubble: { padding: spacing.sm, borderRadius: radius.md, marginBottom: spacing.sm, maxWidth: "85%" },
-  bubbleAi: { backgroundColor: colors.ivoryDeep, alignSelf: "flex-start" },
-  bubbleUser: { backgroundColor: colors.navy, alignSelf: "flex-end" },
-  aiLabel: { ...typography.micro, color: colors.gold, marginBottom: 2 },
-  bubbleTextAi: { ...typography.small, color: colors.navy },
+  bubbleAi: { backgroundColor: colors.paper2, alignSelf: "flex-start" },
+  bubbleUser: { backgroundColor: colors.brand900, alignSelf: "flex-end" },
+  aiLabel: { ...typography.micro, color: colors.brand600, marginBottom: 2 },
+  bubbleTextAi: { ...typography.small, color: colors.ink },
   bubbleTextUser: { ...typography.small, color: colors.white },
   chatInputArea: { padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   replyChip: {
-    borderWidth: 1, borderColor: colors.gold, backgroundColor: colors.white, borderRadius: radius.pill,
+    borderWidth: 1, borderColor: colors.brand500, backgroundColor: colors.white, borderRadius: radius.pill,
     paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.md, marginRight: spacing.sm, marginBottom: spacing.sm,
   },
-  replyChipText: { ...typography.small, color: colors.navy, fontWeight: "600" },
+  replyChipText: { ...typography.small, color: colors.ink, fontWeight: "600" },
   inputRow: { flexDirection: "row", alignItems: "center" },
   chatInput: {
     flex: 1, backgroundColor: colors.white, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm, color: colors.navy,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm, color: colors.ink,
   },
-  sendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, padding: spacing.sm + 2 },
+  sendButton: { backgroundColor: colors.brand500, borderRadius: radius.pill, padding: spacing.sm + 2 },
 });

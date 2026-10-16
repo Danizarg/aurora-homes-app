@@ -58,7 +58,7 @@ export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) 
             <Ionicons
               name={saved ? "heart" : "heart-outline"}
               size={18}
-              color={saved ? colors.terracotta : colors.navy}
+              color={saved ? colors.brand500 : colors.ink}
             />
           </Pressable>
         ) : null}
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   cardPressed: {
     opacity: 0.92,
   },
-  image: { width: "100%", aspectRatio: 4 / 3, backgroundColor: colors.sand },
+  image: { width: "100%", aspectRatio: 4 / 3, backgroundColor: colors.paper2 },
   badgeRow: {
     position: "absolute",
     top: spacing.sm + 2,
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
   saveButtonPressed: { opacity: 0.8 },
   body: { padding: spacing.md, paddingTop: spacing.md - 2 },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: spacing.sm },
-  title: { ...typography.h3, color: colors.navy, flex: 1 },
-  price: { ...typography.h3, color: colors.navy },
+  title: { ...typography.h3, color: colors.ink, flex: 1 },
+  price: { ...typography.h3, color: colors.ink },
   location: { ...typography.small, color: colors.muted, marginTop: 3 },
   summary: { ...typography.small, color: colors.muted, marginTop: 4 },
 });

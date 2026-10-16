@@ -10,7 +10,7 @@ import { mockViewingRequests } from "../../lib/mock/messages";
 
 const menuItems = [
   { icon: "business-outline" as const, label: "Owner dashboard", route: "/owner-dashboard" },
-  { icon: "mail-outline" as const, label: "Contact Aurora Homes", route: "/contact" },
+  { icon: "mail-outline" as const, label: "Contact Zouza", route: "/contact" },
   { icon: "shield-checkmark-outline" as const, label: "Trust & verification", route: "/trust" },
   { icon: "pricetag-outline" as const, label: "Pricing & fees", route: "/pricing" },
   { icon: "document-text-outline" as const, label: "Terms of service", route: "/legal/terms" },
@@ -36,7 +36,7 @@ export default function ProfileScreen() {
             <Text style={styles.avatarInitial}>A</Text>
           </View>
           <View>
-            <Text style={styles.name}>Aurora Demo Account</Text>
+            <Text style={styles.name}>Demo account</Text>
             <Badge label="Not yet verified" tone="muted" />
           </View>
         </View>
@@ -50,7 +50,7 @@ export default function ProfileScreen() {
         <View style={styles.menu}>
           {menuItems.map((item) => (
             <Pressable key={item.label} style={styles.menuRow} onPress={() => router.push(item.route as never)}>
-              <Ionicons name={item.icon} size={20} color={colors.gold} />
+              <Ionicons name={item.icon} size={20} color={colors.brand500} />
               <Text style={styles.menuLabel}>{item.label}</Text>
               <Ionicons name="chevron-forward" size={18} color={colors.muted} />
             </Pressable>
@@ -64,7 +64,7 @@ export default function ProfileScreen() {
             router.replace("/auth/login");
           }}
         >
-          <Ionicons name="log-out-outline" size={20} color={colors.error} />
+          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
           <Text style={styles.logoutLabel}>Log out</Text>
         </Pressable>
       </ScrollView>
@@ -82,24 +82,24 @@ function StatCard({ label, value, onPress }: { label: string; value: number; onP
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   profileHeader: { flexDirection: "row", alignItems: "center", marginBottom: spacing.lg },
-  avatar: { width: 56, height: 56, borderRadius: radius.pill, backgroundColor: colors.sand, alignItems: "center", justifyContent: "center", marginRight: spacing.md },
-  avatarInitial: { ...typography.h1, color: colors.gold },
-  name: { ...typography.h3, color: colors.navy, marginBottom: spacing.xs },
+  avatar: { width: 56, height: 56, borderRadius: radius.pill, backgroundColor: colors.paper2, alignItems: "center", justifyContent: "center", marginRight: spacing.md },
+  avatarInitial: { ...typography.h1, color: colors.brand600 },
+  name: { ...typography.h3, color: colors.ink, marginBottom: spacing.xs },
   statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xl },
   statCard: {
     flex: 1, backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
     padding: spacing.md, marginRight: spacing.sm, alignItems: "center", ...shadow.soft,
   },
-  statValue: { ...typography.h1, color: colors.navy },
+  statValue: { ...typography.h1, color: colors.ink },
   statLabel: { ...typography.micro, color: colors.muted, textTransform: "none", marginTop: spacing.xs, textAlign: "center" },
   menu: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
   menuRow: {
     flexDirection: "row", alignItems: "center", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.md,
   },
-  menuLabel: { ...typography.body, color: colors.navy, flex: 1 },
+  menuLabel: { ...typography.body, color: colors.ink, flex: 1 },
   logoutRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.xl, gap: spacing.sm },
-  logoutLabel: { ...typography.bodyMedium, color: colors.error },
+  logoutLabel: { ...typography.bodyMedium, color: colors.danger },
 });

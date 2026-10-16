@@ -36,7 +36,7 @@ export const mockConversations: Conversation[] = [
 export const mockMessages: Record<string, Message[]> = {
   c1: [
     { id: "m1", conversation_id: "c1", sender: "them", text: "Hi, I saw your listing for the Sunrise Apartment.", created_at: "2026-07-04T10:00:00Z" },
-    { id: "m2", conversation_id: "c1", sender: "ai", text: "Hello Laura, thanks for reaching out. This is Aurora, the AI assistant for this listing — happy to help while the owner joins.", created_at: "2026-07-04T10:05:00Z" },
+    { id: "m2", conversation_id: "c1", sender: "ai", text: "Hello Laura, thanks for reaching out. This is Suzi, the AI assistant for this listing — happy to help while the owner joins.", created_at: "2026-07-04T10:05:00Z" },
     { id: "m3", conversation_id: "c1", sender: "them", text: "Is the property still available for August?", created_at: "2026-07-04T10:30:00Z" },
   ],
   c2: [
@@ -56,6 +56,6 @@ export const mockViewingRequests: ViewingRequest[] = [
 ];
 
 export const mockReviews: Review[] = [
-  { id: "r1", listing_id: "l1", author_name: "Marc D.", rating: 5, text: "Beautiful apartment, exactly as described. The AI assistant answered all our questions before we even arrived.", created_at: "2026-05-01T00:00:00Z" },
+  { id: "r1", listing_id: "l1", author_name: "Marc D.", rating: 5, text: "Beautiful apartment, exactly as described. Suzi answered all our questions before we even arrived.", created_at: "2026-05-01T00:00:00Z" },
   { id: "r2", listing_id: "l1", author_name: "Sophie R.", rating: 4, text: "Great location, minor issue with the pool schedule but the owner sorted it quickly.", created_at: "2026-04-10T00:00:00Z" },
 ];

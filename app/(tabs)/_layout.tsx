@@ -2,13 +2,14 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { View, StyleSheet } from "react-native";
 import { colors, radius } from "../../constants/theme";
+import { ZMark } from "../../components/brand/ZMark";
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.navy,
+        tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
           backgroundColor: colors.white,
@@ -37,10 +38,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="ai"
         options={{
-          title: "AI",
+          title: "Suzi",
           tabBarIcon: ({ color }) => (
             <View style={styles.createBadge}>
-              <Ionicons name="sparkles" size={22} color={colors.white} />
+              <ZMark size={22} color={colors.white} />
             </View>
           ),
         }}
@@ -68,11 +69,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radius.pill,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.brand500,
     alignItems: "center",
     justifyContent: "center",
     marginTop: -18,
-    shadowColor: colors.navy,
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

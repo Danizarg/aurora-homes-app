@@ -1,15 +1,8 @@
-// AI service abstraction for Aurora Homes.
-//
-// If OPENAI_API_KEY or ANTHROPIC_API_KEY is not set, every function below
-// falls back to deterministic mock generation so the app can be demoed with
-// no AI backend at all. To connect a real model, implement the calls inside
-// the `hasRealAiKey` branches — the function signatures are already the
-// shape the rest of the app expects, so no other file needs to change.
+// Deterministic AI layer for Zouza — the zero-config demo and the permanent
+// fallback. The real model is reached through zouza.ai in `./suzi.ts`; the
+// app never holds a provider key. Keep these functions: when the website
+// can't be reached, they are what the user sees.
 import type { AiGeneratedContent, FaqItem } from "../../types";
-
-export const hasRealAiKey = Boolean(
-  process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY
-);
 
 export type Positioning = "rent_long" | "rent_holiday" | "sale";
 
@@ -38,6 +31,7 @@ export interface ListingDraftInput {
   deposit?: number;
   ownerRules?: string;
   notes?: string;
+  photoCount?: number;
 }
 
 export interface DetectedFeatures {
@@ -126,11 +120,11 @@ function buildFaq(input: ListingDraftInput): FaqItem[] {
       question: "Is there a garage?",
       answer: input.garage
         ? "Yes, a private garage is included."
-        : "No dedicated garage is included, but street parking is usually available.",
+        : "No private garage is listed — ask the owner about parking.",
     },
     {
       question: "Is it suitable for remote work?",
-      answer: "The property has a stable internet connection and a quiet area suited to remote work.",
+      answer: "Internet speed isn't part of this listing's data — ask the owner through the message button.",
     },
   ];
 }
@@ -142,21 +136,13 @@ function priceExplanation(input: ListingDraftInput): string {
   const monthly = input.priceMonthly ?? 0;
   const utilities = input.utilitiesMonthly ?? 0;
   const deposit = input.deposit ?? monthly;
-  const feePercent = 2;
-  const fee = Math.round(monthly * (feePercent / 100));
-  const total = monthly + utilities + deposit + fee;
-  return `Monthly rent: ${monthly} €. Utilities: ${utilities} €. Deposit: ${deposit} €. Platform fee: ${feePercent}% (${fee} €). Total due at move-in: ${total} €.`;
+  const total = monthly + utilities + deposit;
+  return `Monthly rent: ${monthly} €. Utilities: ${utilities} €. Deposit: ${deposit} €. No Zouza fee. Total due at move-in: ${total} €, all of it to the owner or back to you as the deposit.`;
 }
 
 export async function generateListingContent(
   input: ListingDraftInput
 ): Promise<AiGeneratedContent> {
-  if (hasRealAiKey) {
-    // TODO: call OpenAI / Anthropic here using the same input shape and
-    // return an AiGeneratedContent object. Falling through to the mock
-    // generator keeps the app functional until that call is implemented.
-  }
-
   const locationLabel = `${input.addressArea}, ${input.city}`;
   const propertyLabel = input.propertyType.charAt(0).toUpperCase() + input.propertyType.slice(1);
   const title = `${input.seaView ? "Sea View " : ""}${propertyLabel} in ${input.city}`;
@@ -170,7 +156,7 @@ export async function generateListingContent(
     input.seaView ? "Enjoy sea views from the main living area. " : ""
   }${input.pool ? "A pool is available on-site. " : ""}${
     input.notes ? input.notes + " " : ""
-  }The property is presented by Aurora Homes with a dedicated AI assistant to answer questions at any time.`;
+  }Suzi, Zouza’s assistant, answers questions about this property at any time.`;
 
   return {
     id: `draft-${Date.now()}`,

@@ -43,7 +43,7 @@ export default function LoginScreen() {
           <Text style={styles.link}>Forgot password?</Text>
         </Pressable>
         <Pressable onPress={() => router.push("/auth/signup")} style={{ marginTop: spacing.sm }}>
-          <Text style={styles.link}>Don't have an account? Sign up</Text>
+          <Text style={styles.link}>Don’t have an account? Sign up</Text>
         </Pressable>
         <Pressable onPress={() => router.replace("/(tabs)")} style={{ marginTop: spacing.xl }}>
           <Text style={styles.skipLink}>Continue without an account</Text>
@@ -54,16 +54,16 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingTop: spacing.xl },
-  title: { ...typography.display, color: colors.navy },
+  title: { ...typography.display, color: colors.ink },
   subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xl },
-  label: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs, marginTop: spacing.md },
+  label: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs, marginTop: spacing.md },
   input: {
     backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.navy, ...typography.body,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, ...typography.body,
   },
-  error: { ...typography.small, color: colors.error, marginTop: spacing.sm },
-  link: { ...typography.small, color: colors.gold, fontWeight: "600", textAlign: "center" },
+  error: { ...typography.small, color: colors.danger, marginTop: spacing.sm },
+  link: { ...typography.small, color: colors.brand600, fontWeight: "600", textAlign: "center" },
   skipLink: { ...typography.small, color: colors.muted, textAlign: "center" },
 });
