@@ -23,9 +23,14 @@ npm install
 npx expo start
 ```
 
-Scan the QR code with **Expo Go** on an iPhone. No backend or keys are
-needed: the app runs on demo listings and local storage until Supabase is
-configured (below).
+Scan the QR code with **Expo Go** on an iPhone (App Store). The phone and
+the PC must be on the same Wi-Fi; if they aren't, start with
+`npx expo start --tunnel` instead. No backend or keys are needed: the app
+runs on demo listings and local storage until Supabase is configured
+(below), and Suzi answers through zouza.ai.
+
+Expo Go only runs projects on the current SDK, so keep `expo` on the
+version Expo Go supports (SDK 58 as of 2026-10-16).
 
 ## Suzi
 
