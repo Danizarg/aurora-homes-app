@@ -21,11 +21,11 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
   eyebrow: {
     ...typography.micro,
-    color: colors.gold,
+    color: colors.brand600,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: spacing.xs,
   },
-  title: { ...typography.h2, color: colors.navy },
+  title: { ...typography.h2, color: colors.ink },
   subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
 });

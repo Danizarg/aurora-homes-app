@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { ZMark } from "../../components/brand/ZMark";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { SectionHeader } from "../../components/ui/SectionHeader";
@@ -82,7 +83,7 @@ export default function HomeScreen() {
               onPress={() => router.push(action.route as never)}
             >
               <View style={styles.actionIconWrap}>
-                <Ionicons name={action.icon} size={20} color={colors.gold} />
+                <Ionicons name={action.icon} size={20} color={colors.brand500} />
               </View>
               <Text style={styles.actionTitle}>{action.title}</Text>
               <Text style={styles.actionMicro}>{action.micro}</Text>
@@ -93,9 +94,9 @@ export default function HomeScreen() {
         {/* AI feature explanation */}
         <Card style={styles.aiCard}>
           <View style={styles.actionIconWrap}>
-            <Ionicons name="sparkles" size={20} color={colors.gold} />
+            <ZMark size={20} color={colors.brand500} />
           </View>
-          <Text style={styles.aiCardTitle}>Upload photos. Aurora creates the listing.</Text>
+          <Text style={styles.aiCardTitle}>Upload photos. Suzi creates the listing.</Text>
           <Text style={styles.aiCardBody}>
             Exposé, FAQ, translations, and a dedicated property assistant — generated automatically.
           </Text>
@@ -111,7 +112,7 @@ export default function HomeScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.white} />
         </Pressable>
 
-        {/* Property AI Agent demo */}
+        {/* Suzi demo */}
         <SectionHeader eyebrow="Every listing" title="A dedicated AI property agent" subtitle="Renters and buyers can ask questions 24/7 — availability, pets, price, viewings — answered instantly." />
         <Card style={{ marginBottom: spacing.xl }}>
           <View style={styles.chatBubbleThem}>
@@ -125,12 +126,12 @@ export default function HomeScreen() {
         {/* Verified homes + price transparency */}
         <View style={styles.twoCol}>
           <Card style={styles.halfCard}>
-            <Ionicons name="shield-checkmark-outline" size={22} color={colors.gold} />
+            <Ionicons name="shield-checkmark-outline" size={22} color={colors.brand500} />
             <Text style={styles.smallCardTitle}>Verified homes</Text>
             <Text style={styles.smallCardBody}>Owner and property verification, checked on an ongoing basis.</Text>
           </Card>
           <Card style={styles.halfCard}>
-            <Ionicons name="cash-outline" size={22} color={colors.gold} />
+            <Ionicons name="cash-outline" size={22} color={colors.brand500} />
             <Text style={styles.smallCardTitle}>Real price transparency</Text>
             <Text style={styles.smallCardBody}>Rent, utilities, deposit, and fees shown clearly — no hidden costs.</Text>
           </Card>
@@ -147,9 +148,9 @@ export default function HomeScreen() {
         </View>
 
         <Card style={{ marginTop: spacing.lg }}>
-          <Text style={styles.smallCardTitle}>Low-fee, transparent pricing</Text>
+          <Text style={styles.smallCardTitle}>No fees. One subscription.</Text>
           <Text style={styles.smallCardBody}>
-            Aurora Homes is built around a lower, transparent platform fee compared to traditional agencies.
+            Owners pay a flat €20/month. Tenants and buyers pay nothing — no commission, no booking fee, nothing added at move-in.
           </Text>
           <Pressable onPress={() => router.push("/pricing")}>
             <Text style={styles.exampleLink}>See pricing →</Text>
@@ -161,26 +162,26 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   hero: { marginTop: spacing.md, marginBottom: spacing.lg },
-  heroTitle: { ...typography.display, color: colors.navy },
-  heroTitleAccent: { ...typography.display, color: colors.gold },
-  searchPrompt: { ...typography.h3, color: colors.navy, marginBottom: spacing.sm },
+  heroTitle: { ...typography.display, color: colors.ink },
+  heroTitleAccent: { ...typography.display, color: colors.brand600 },
+  searchPrompt: { ...typography.h3, color: colors.ink, marginBottom: spacing.sm },
   searchBar: {
     flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderRadius: radius.pill,
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md + 2,
     marginBottom: spacing.xl, ...shadow.card,
   },
-  searchInput: { ...typography.body, color: colors.navy, marginLeft: spacing.sm, flex: 1 },
+  searchInput: { ...typography.body, color: colors.ink, marginLeft: spacing.sm, flex: 1 },
   carousel: { marginBottom: spacing.xxl, marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
-  carouselCard: { width: 232, height: 280, borderRadius: radius.xl, overflow: "hidden", marginRight: spacing.md, backgroundColor: colors.sand, ...shadow.soft },
+  carouselCard: { width: 232, height: 280, borderRadius: radius.xl, overflow: "hidden", marginRight: spacing.md, backgroundColor: colors.paper2, ...shadow.soft },
   carouselImage: { width: "100%", height: "100%" },
   carouselOverlay: {
     position: "absolute", bottom: 0, left: 0, right: 0, padding: spacing.md,
     backgroundColor: "rgba(27,36,48,0.5)",
   },
-  carouselCity: { ...typography.micro, color: colors.goldSoft, textTransform: "uppercase" },
+  carouselCity: { ...typography.micro, color: colors.brand300, textTransform: "uppercase" },
   carouselTitle: { ...typography.bodyMedium, color: colors.white, marginTop: 2 },
   actionsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: spacing.xl },
   actionCard: {
@@ -189,27 +190,27 @@ const styles = StyleSheet.create({
   },
   actionCardPressed: { opacity: 0.9 },
   actionIconWrap: {
-    width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.sand,
+    width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.paper2,
     alignItems: "center", justifyContent: "center",
   },
-  actionTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.md },
+  actionTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.md },
   actionMicro: { ...typography.small, color: colors.muted },
   aiCard: { marginBottom: spacing.lg },
-  aiCardTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.md },
+  aiCardTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.md },
   aiCardBody: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
   ownerCta: {
-    flexDirection: "row", alignItems: "center", backgroundColor: colors.navy, borderRadius: radius.xl,
+    flexDirection: "row", alignItems: "center", backgroundColor: colors.brand900, borderRadius: radius.xl,
     padding: spacing.lg, marginBottom: spacing.xl, ...shadow.card,
   },
   ownerCtaTitle: { ...typography.h3, color: colors.white },
-  ownerCtaMicro: { ...typography.small, color: colors.goldSoft, marginTop: 2 },
-  chatBubbleThem: { backgroundColor: colors.ivoryDeep, borderRadius: radius.md, padding: spacing.sm, alignSelf: "flex-start", marginBottom: spacing.sm, maxWidth: "85%" },
-  chatBubbleMe: { backgroundColor: colors.navy, borderRadius: radius.md, padding: spacing.sm, alignSelf: "flex-end", maxWidth: "85%" },
-  chatText: { ...typography.small, color: colors.navy },
+  ownerCtaMicro: { ...typography.small, color: colors.brand300, marginTop: 2 },
+  chatBubbleThem: { backgroundColor: colors.paper2, borderRadius: radius.md, padding: spacing.sm, alignSelf: "flex-start", marginBottom: spacing.sm, maxWidth: "85%" },
+  chatBubbleMe: { backgroundColor: colors.brand900, borderRadius: radius.md, padding: spacing.sm, alignSelf: "flex-end", maxWidth: "85%" },
+  chatText: { ...typography.small, color: colors.ink },
   chatTextMe: { ...typography.small, color: colors.white },
   twoCol: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xl },
   halfCard: { width: "48%" },
-  smallCardTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.sm },
+  smallCardTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.sm },
   smallCardBody: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
   destinationsRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.xl },
   destinationChip: {
@@ -217,6 +218,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill, paddingVertical: spacing.sm - 2, paddingHorizontal: spacing.md,
     marginRight: spacing.sm, marginBottom: spacing.sm,
   },
-  destinationText: { ...typography.small, color: colors.navy, fontWeight: "600" },
-  exampleLink: { ...typography.bodyMedium, color: colors.gold, marginTop: spacing.sm },
+  destinationText: { ...typography.small, color: colors.ink, fontWeight: "600" },
+  exampleLink: { ...typography.bodyMedium, color: colors.brand600, marginTop: spacing.sm },
 });

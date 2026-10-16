@@ -1,4 +1,4 @@
-// Supabase client for Aurora Homes.
+// Supabase client for Zouza.
 //
 // Setup: copy .env.example to .env and fill in EXPO_PUBLIC_SUPABASE_URL and
 // EXPO_PUBLIC_SUPABASE_ANON_KEY, then run `supabase/schema.sql` against your

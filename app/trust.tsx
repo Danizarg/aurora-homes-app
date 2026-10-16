@@ -38,9 +38,9 @@ export default function TrustScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
-        <SectionHeader eyebrow="Trust & safety" title="How Aurora Homes verification works" />
+        <SectionHeader eyebrow="Trust & safety" title="How Zouza verification works" />
 
         {sections.map((s) => (
           <Card key={s.title} style={{ marginBottom: spacing.md }}>
@@ -52,7 +52,7 @@ export default function TrustScreen() {
         <Card style={styles.disclaimer}>
           <Text style={styles.cardTitle}>No guarantee disclaimer</Text>
           <Text style={styles.cardBody}>
-            Verification improves confidence but is not a guarantee. Aurora Homes does not guarantee tenants, buyers,
+            Verification improves confidence but is not a guarantee. Zouza does not guarantee tenants, buyers,
             contracts, rent payments, or legal outcomes. Always exercise your own diligence before transacting.
           </Text>
         </Card>
@@ -62,9 +62,9 @@ export default function TrustScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  cardTitle: { ...typography.h3, color: colors.navy, marginBottom: spacing.xs },
+  cardTitle: { ...typography.h3, color: colors.ink, marginBottom: spacing.xs },
   cardBody: { ...typography.small, color: colors.muted },
-  disclaimer: { backgroundColor: colors.ivoryDeep },
+  disclaimer: { backgroundColor: colors.paper2 },
 });

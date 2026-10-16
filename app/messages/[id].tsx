@@ -23,7 +23,7 @@ export default function ConversationScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
         <View style={{ marginLeft: spacing.md }}>
           <Text style={styles.headerTitle}>{conversation?.participant_name ?? "Conversation"}</Text>
@@ -38,7 +38,7 @@ export default function ConversationScreen() {
           contentContainerStyle={styles.messagesList}
           renderItem={({ item }) => (
             <View style={[styles.bubble, item.sender === "me" ? styles.bubbleMe : item.sender === "ai" ? styles.bubbleAi : styles.bubbleThem]}>
-              {item.sender === "ai" ? <Text style={styles.aiLabel}>Aurora AI</Text> : null}
+              {item.sender === "ai" ? <Text style={styles.aiLabel}>Suzi</Text> : null}
               <Text style={item.sender === "me" ? styles.bubbleTextMe : styles.bubbleText}>{item.text}</Text>
             </View>
           )}
@@ -62,22 +62,22 @@ export default function ConversationScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   header: { flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { ...typography.h3, color: colors.navy },
-  headerSubtitle: { ...typography.small, color: colors.gold },
+  headerTitle: { ...typography.h3, color: colors.ink },
+  headerSubtitle: { ...typography.small, color: colors.brand600 },
   messagesList: { padding: spacing.lg },
   bubble: { padding: spacing.sm, borderRadius: radius.md, marginBottom: spacing.sm, maxWidth: "80%" },
   bubbleThem: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, alignSelf: "flex-start" },
-  bubbleAi: { backgroundColor: colors.ivoryDeep, alignSelf: "flex-start" },
-  bubbleMe: { backgroundColor: colors.navy, alignSelf: "flex-end" },
-  aiLabel: { ...typography.micro, color: colors.gold, marginBottom: 2 },
-  bubbleText: { ...typography.small, color: colors.navy },
+  bubbleAi: { backgroundColor: colors.paper2, alignSelf: "flex-start" },
+  bubbleMe: { backgroundColor: colors.brand900, alignSelf: "flex-end" },
+  aiLabel: { ...typography.micro, color: colors.brand600, marginBottom: 2 },
+  bubbleText: { ...typography.small, color: colors.ink },
   bubbleTextMe: { ...typography.small, color: colors.white },
   inputRow: { flexDirection: "row", alignItems: "center", padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   input: {
     flex: 1, backgroundColor: colors.white, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm, color: colors.navy,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm, color: colors.ink,
   },
-  sendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, padding: spacing.sm + 2 },
+  sendButton: { backgroundColor: colors.brand500, borderRadius: radius.pill, padding: spacing.sm + 2 },
 });

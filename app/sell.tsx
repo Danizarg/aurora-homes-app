@@ -8,9 +8,9 @@ import { Card } from "../components/ui/Card";
 
 const steps = [
   { icon: "camera-outline" as const, title: "Upload photos", body: "Add photos of the property — interior, exterior, and standout features." },
-  { icon: "document-text-outline" as const, title: "Generate sales exposé", body: "Aurora writes a professional exposé built to attract serious buyers." },
+  { icon: "document-text-outline" as const, title: "Generate sales exposé", body: "Suzi writes a professional exposé built to attract serious buyers." },
   { icon: "help-circle-outline" as const, title: "Generate buyer FAQ", body: "Common buyer questions answered upfront, reducing back-and-forth." },
-  { icon: "albums-outline" as const, title: "Prepare listing", body: "Your listing is formatted and ready to publish across Aurora Homes." },
+  { icon: "albums-outline" as const, title: "Prepare listing", body: "Your listing is formatted and ready to publish across Zouza." },
   { icon: "calendar-outline" as const, title: "Request viewings", body: "Buyers can request a viewing directly from the listing." },
   { icon: "person-outline" as const, title: "Direct owner contact", body: "Buyers reach you directly — no middleman required." },
   { icon: "shield-checkmark-outline" as const, title: "Verification badge", body: "Optional owner and property verification builds buyer trust." },
@@ -21,7 +21,7 @@ export default function SellScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
         <Text style={styles.title}>Sell your property with agency-level presentation, without the agency process.</Text>
 
@@ -29,7 +29,7 @@ export default function SellScreen() {
 
         {steps.map((s) => (
           <Card key={s.title} style={styles.stepCard}>
-            <Ionicons name={s.icon} size={22} color={colors.gold} />
+            <Ionicons name={s.icon} size={22} color={colors.brand500} />
             <Text style={styles.stepTitle}>{s.title}</Text>
             <Text style={styles.stepBody}>{s.body}</Text>
           </Card>
@@ -38,7 +38,7 @@ export default function SellScreen() {
         <Card style={styles.disclaimerCard}>
           <Text style={styles.disclaimerTitle}>Legal disclaimer</Text>
           <Text style={styles.disclaimerBody}>
-            Aurora Homes does not provide legal advice, payment processing, escrow, or contract negotiation. All
+            Zouza does not provide legal advice, payment processing, escrow, or contract negotiation. All
             sales are conducted directly between the owner and buyer; please engage a licensed professional for
             legal and tax matters.
           </Text>
@@ -49,13 +49,13 @@ export default function SellScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { ...typography.display, color: colors.navy },
+  title: { ...typography.display, color: colors.ink },
   stepCard: { marginBottom: spacing.md },
-  stepTitle: { ...typography.h3, color: colors.navy, marginTop: spacing.sm },
+  stepTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.sm },
   stepBody: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
-  disclaimerCard: { marginTop: spacing.md, backgroundColor: colors.ivoryDeep },
-  disclaimerTitle: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
+  disclaimerCard: { marginTop: spacing.md, backgroundColor: colors.paper2 },
+  disclaimerTitle: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs },
   disclaimerBody: { ...typography.small, color: colors.muted },
 });

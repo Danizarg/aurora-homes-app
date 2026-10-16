@@ -225,9 +225,9 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  headerTitle: { ...typography.h1, color: colors.navy, marginBottom: spacing.lg },
+  headerTitle: { ...typography.h1, color: colors.ink, marginBottom: spacing.lg },
   modeRow: { flexDirection: "row", marginBottom: spacing.md },
   searchRow: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md },
   searchInputWrap: {
@@ -235,19 +235,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md, paddingVertical: spacing.md - 2, marginRight: spacing.sm, ...shadow.card,
   },
-  searchInput: { ...typography.body, color: colors.navy, marginLeft: spacing.sm, flex: 1 },
-  filterButton: { backgroundColor: colors.navy, borderRadius: radius.pill, padding: spacing.sm + 4, ...shadow.card },
+  searchInput: { ...typography.body, color: colors.ink, marginLeft: spacing.sm, flex: 1 },
+  filterButton: { backgroundColor: colors.brand900, borderRadius: radius.pill, padding: spacing.sm + 4, ...shadow.card },
   sortRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
   resultsCount: { ...typography.small, color: colors.muted },
-  sortLabel: { ...typography.small, color: colors.gold, fontWeight: "600" },
+  sortLabel: { ...typography.small, color: colors.brand600, fontWeight: "600" },
   listContent: { padding: spacing.lg, paddingTop: spacing.sm },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(27,36,48,0.4)", justifyContent: "flex-end" },
   modalSheet: {
-    backgroundColor: colors.ivory, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    backgroundColor: colors.paper, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     padding: spacing.lg, maxHeight: "85%",
   },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: spacing.md },
-  modalTitle: { ...typography.h2, color: colors.navy, marginBottom: spacing.md },
-  filterLabel: { ...typography.bodyMedium, color: colors.navy, marginTop: spacing.md, marginBottom: spacing.sm },
+  modalTitle: { ...typography.h2, color: colors.ink, marginBottom: spacing.md },
+  filterLabel: { ...typography.bodyMedium, color: colors.ink, marginTop: spacing.md, marginBottom: spacing.sm },
   chipRow: { flexDirection: "row", flexWrap: "wrap" },
 });

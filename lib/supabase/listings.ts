@@ -63,7 +63,6 @@ export async function createListingInSupabase(listing: Listing, ownerId: string)
       price_sale: listing.price_sale,
       utilities_monthly: listing.utilities_monthly,
       deposit: listing.deposit,
-      platform_fee_percent: listing.platform_fee_percent,
       total_move_in_cost: listing.total_move_in_cost,
       pets_allowed: listing.pets_allowed,
       pool: listing.pool,
@@ -109,7 +108,6 @@ interface ListingRow {
   price_sale: number | null;
   utilities_monthly: number | null;
   deposit: number | null;
-  platform_fee_percent: number;
   total_move_in_cost: number | null;
   pets_allowed: boolean;
   pool: boolean;
@@ -145,7 +143,6 @@ function mapRow(row: ListingRow): Listing {
     price_sale: row.price_sale ?? undefined,
     utilities_monthly: row.utilities_monthly ?? undefined,
     deposit: row.deposit ?? undefined,
-    platform_fee_percent: row.platform_fee_percent,
     total_move_in_cost: row.total_move_in_cost ?? undefined,
     pets_allowed: row.pets_allowed,
     pool: row.pool,

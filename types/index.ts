@@ -1,4 +1,4 @@
-// Core domain types for Aurora Homes.
+// Core domain types for Zouza.
 
 export type ListingMode = "rent" | "buy" | "stay" | "live";
 export type ListingIntent = "rent_out" | "sell";
@@ -46,7 +46,6 @@ export interface Listing {
   price_sale?: number;
   utilities_monthly?: number;
   deposit?: number;
-  platform_fee_percent: number;
   total_move_in_cost?: number;
   available_from?: string;
   minimum_stay?: string;

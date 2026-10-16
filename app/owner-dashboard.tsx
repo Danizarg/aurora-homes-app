@@ -36,7 +36,7 @@ export default function OwnerDashboardScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
         <SectionHeader eyebrow="Owner dashboard" title="Manage your listings" />
 
@@ -76,14 +76,14 @@ export default function OwnerDashboardScreen() {
           </Card>
         ))}
 
-        <SectionHeader title="AI agent activity" subtitle="Questions your property AI assistants have answered on your behalf." />
+        <SectionHeader title="Suzi activity" subtitle="Questions Suzi has answered on your behalf." />
         <Card style={{ marginBottom: spacing.sm }}>
           <Text style={styles.listingMeta}>18 questions answered this month across your listings, including availability, pets, and pricing.</Text>
         </Card>
 
         <SectionHeader title="Verification tasks" />
         <Card style={{ marginBottom: spacing.xl }}>
-          <Text style={styles.listingMeta}>Upload proof of ownership or listing authorization to unlock the "Verified" badge and appear higher in search.</Text>
+          <Text style={styles.listingMeta}>Upload proof of ownership or listing authorization to unlock the “Verified” badge and appear higher in search.</Text>
           <Button label="Start verification" variant="outline" style={{ marginTop: spacing.md }} onPress={() => router.push("/trust")} />
         </Card>
       </ScrollView>
@@ -92,9 +92,9 @@ export default function OwnerDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  listingTitle: { ...typography.bodyMedium, color: colors.navy },
+  listingTitle: { ...typography.bodyMedium, color: colors.ink },
   listingMeta: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 });

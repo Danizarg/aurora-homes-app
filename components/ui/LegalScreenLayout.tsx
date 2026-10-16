@@ -14,7 +14,7 @@ export function LegalScreenLayout({ title, paragraphs }: LegalScreenLayoutProps)
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
         <Text style={styles.title}>{title}</Text>
         {paragraphs.map((p, i) => (
@@ -26,8 +26,8 @@ export function LegalScreenLayout({ title, paragraphs }: LegalScreenLayoutProps)
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { ...typography.h1, color: colors.navy, marginBottom: spacing.lg },
-  paragraph: { ...typography.body, color: colors.navy, marginBottom: spacing.md, lineHeight: 22 },
+  title: { ...typography.h1, color: colors.ink, marginBottom: spacing.lg },
+  paragraph: { ...typography.body, color: colors.ink, marginBottom: spacing.md, lineHeight: 22 },
 });

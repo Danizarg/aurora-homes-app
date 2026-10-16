@@ -35,7 +35,7 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "primary" ? colors.white : colors.navy} />
+        <ActivityIndicator color={variant === "primary" ? colors.white : colors.ink} />
       ) : (
         <Text style={[styles.label, textVariantStyles[variant]]}>{label}</Text>
       )}
@@ -68,15 +68,15 @@ const styles = StyleSheet.create({
 });
 
 const variantStyles: Record<string, ViewStyle> = {
-  primary: { backgroundColor: colors.navy },
-  secondary: { backgroundColor: colors.gold },
-  outline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.navy },
+  primary: { backgroundColor: colors.brand500 },
+  secondary: { backgroundColor: colors.brand100 },
+  outline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.borderStrong },
   ghost: { backgroundColor: "transparent" },
 };
 
 const textVariantStyles: Record<string, { color: string }> = {
   primary: { color: colors.white },
-  secondary: { color: colors.navy },
-  outline: { color: colors.navy },
-  ghost: { color: colors.navy },
+  secondary: { color: colors.brand700 },
+  outline: { color: colors.ink2 },
+  ghost: { color: colors.ink },
 };

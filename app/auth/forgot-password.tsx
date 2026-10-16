@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.content}>
         <Text style={styles.title}>Reset your password</Text>
-        <Text style={styles.subtitle}>We'll send a reset link to your email.</Text>
+        <Text style={styles.subtitle}>We’ll send a reset link to your email.</Text>
 
         {sent ? (
           <Text style={styles.success}>If an account exists for {email}, a reset link has been sent.</Text>
@@ -43,15 +43,15 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
+  safe: { flex: 1, backgroundColor: colors.paper },
   content: { padding: spacing.lg, paddingTop: spacing.xl },
-  title: { ...typography.display, color: colors.navy },
+  title: { ...typography.display, color: colors.ink },
   subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xl },
-  label: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
+  label: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs },
   input: {
     backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.navy, ...typography.body,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, ...typography.body,
   },
   success: { ...typography.body, color: colors.success },
-  link: { ...typography.small, color: colors.gold, fontWeight: "600", textAlign: "center" },
+  link: { ...typography.small, color: colors.brand600, fontWeight: "600", textAlign: "center" },
 });

@@ -7,12 +7,12 @@ interface BadgeProps {
 }
 
 const toneStyles: Record<string, { bg: string; fg: string }> = {
-  gold: { bg: colors.sand, fg: colors.gold },
-  navy: { bg: colors.navy, fg: colors.white },
-  terracotta: { bg: colors.terracottaSoft, fg: colors.navy },
+  gold: { bg: colors.brand100, fg: colors.brand700 },
+  navy: { bg: colors.brand900, fg: colors.white },
+  terracotta: { bg: colors.brand200, fg: colors.ink },
   success: { bg: "#E1EDE4", fg: colors.success },
-  muted: { bg: colors.ivoryDeep, fg: colors.muted },
-  light: { bg: "rgba(255,255,255,0.94)", fg: colors.navy },
+  muted: { bg: colors.paper2, fg: colors.muted },
+  light: { bg: "rgba(255,255,255,0.94)", fg: colors.ink },
 };
 
 export function Badge({ label, tone = "gold" }: BadgeProps) {
