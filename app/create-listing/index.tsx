@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -131,7 +131,7 @@ export default function AiListingBuilder() {
   const [publishing, setPublishing] = useState(false);
   const [publishedToSupabase, setPublishedToSupabase] = useState(false);
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const { city, addressArea } = splitAddress(address);
 
@@ -167,7 +167,10 @@ export default function AiListingBuilder() {
         ...prev,
         { id: "done", from: "ai", text: "Done. I created a professional listing from your photos." },
       ]);
-      setTimeout(() => setStep("generating"), 900);
+      setTimeout(() => {
+        setStageIndex(0);
+        setStep("generating");
+      }, 900);
       return;
     }
     setMessages((prev) => [...prev, { id: `q-${index}`, from: "ai", text: questions[index].ai }]);
@@ -219,9 +222,10 @@ export default function AiListingBuilder() {
     };
   }
 
+  // stageIndex is reset to 0 by whoever moves the wizard into "generating",
+  // so this effect only drives the stage ticker and the real generation.
   useEffect(() => {
     if (step !== "generating") return;
-    setStageIndex(0);
     const interval = setInterval(() => {
       setStageIndex((prev) => {
         if (prev >= generationStages.length - 1) {

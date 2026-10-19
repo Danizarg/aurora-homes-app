@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -67,9 +67,13 @@ export default function SearchScreen() {
     }, [])
   );
 
-  useEffect(() => {
+  // Sync the route's ?q= into the filters when it changes, during render
+  // (React's "adjust state on prop change" pattern) rather than in an effect.
+  const [syncedQuery, setSyncedQuery] = useState(q);
+  if (q !== syncedQuery) {
+    setSyncedQuery(q);
     if (q) setFilters((f) => ({ ...f, query: q }));
-  }, [q]);
+  }
 
   const isRental = mode === "rent" || mode === "stay" || mode === "live";
 
