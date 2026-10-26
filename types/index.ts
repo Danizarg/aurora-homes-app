@@ -58,6 +58,9 @@ export interface Listing {
   verified_owner: boolean;
   verified_property: boolean;
   last_verified_at?: string;
+  /** Approximate coordinates of the area (never the exact door). Falls back to the city when missing. */
+  lat?: number;
+  lng?: number;
   status: ListingStatus;
   images: ListingImage[];
   faq: FaqItem[];
@@ -80,6 +83,8 @@ export interface Conversation {
   last_message_at: string;
   unread: boolean;
   qualified_lead: boolean;
+  /** The booking request this conversation started from, if any. */
+  booking_id?: string;
 }
 
 export interface Message {
@@ -90,13 +95,23 @@ export interface Message {
   created_at: string;
 }
 
-export interface ViewingRequest {
+export type BookingKind = "stay" | "move_in" | "viewing";
+export type BookingStatus = "pending" | "confirmed" | "declined";
+
+/** A stay, a move-in date or a viewing slot requested from a listing's calendar. */
+export interface BookingRequest {
   id: string;
   listing_id: string;
   listing_title: string;
-  requester_name: string;
-  requested_date: string;
-  status: "pending" | "confirmed" | "declined";
+  kind: BookingKind;
+  /** ISO date (YYYY-MM-DD). */
+  start_date: string;
+  /** ISO date; only for stays. */
+  end_date?: string;
+  guests?: number;
+  message?: string;
+  status: BookingStatus;
+  created_at: string;
 }
 
 export interface Review {

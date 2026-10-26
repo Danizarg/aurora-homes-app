@@ -60,6 +60,29 @@ those values re-skins the accent across the app. The brand mark is
 `components/brand/ZMark.tsx` — the same Z mark as the website. Never a
 sparkles icon for Zouza or Suzi.
 
+## Booking, maps and travel
+
+- **Calendar booking** — every listing's sticky bar opens an Airbnb-style
+  calendar (`components/booking`): stays pick a date range, rentals a
+  move-in day, sales a viewing day. A request is stored on the device
+  (`lib/mock/storage.ts`), blocks those days for everyone, opens a
+  conversation with the owner, and shows under Profile → Trips & viewings
+  and on the owner dashboard, where it can be confirmed or declined.
+- **No demo chats** — the inbox only contains threads started from a
+  booking request or "Message owner". Nothing is seeded.
+- **Where you'll be** — a map of the approximate area (react-native-maps,
+  bundled in Expo Go; an OpenStreetMap embed on the web) with the nearest
+  airport and nearby supermarkets, shops, cafés, pharmacies, transport,
+  beaches and parks from OpenStreetMap's Overpass API (`lib/geo/places.ts`;
+  free, no key, shows a retry when the mirrors are busy).
+- **How to get there** — with the traveller's permission (`expo-location`)
+  the listing computes the nearest airports at both ends, flight time,
+  driving time, and links out to Google Flights, Skyscanner and the
+  platform's maps app for directions (`lib/geo/travel.ts`). Zouza never
+  sells travel.
+- **Map view** — the "Map" button on results opens the earth, flies to the
+  homes and shows them as price pins with a card carousel (`app/map.tsx`).
+
 ## Project structure
 
 ```
