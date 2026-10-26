@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, radius, spacing, typography } from "../../constants/theme";
 import { ZMark } from "../brand/ZMark";
 import { askSuzi, type SuziTurn } from "../../lib/ai/suzi";
 import type { Listing } from "../../types";
@@ -24,9 +24,10 @@ const suggestedQuestions = [
 ];
 
 /**
- * Per-listing Suzi chat. Answers come from the real model through zouza.ai
- * (see lib/ai/suzi.ts) and fall back to the listing's FAQ when offline.
- * Suzi never gives legal, tax or financial advice — the footer says so.
+ * Per-listing Suzi chat, Airbnb-card styled. Answers come from the real
+ * model through zouza.ai (lib/ai/suzi.ts) and fall back to the listing's
+ * FAQ when offline. Suzi never gives legal, tax or financial advice — the
+ * footer says so.
  */
 export function PropertyAgentPanel({ listing }: PropertyAgentPanelProps) {
   const [messages, setMessages] = useState<ChatEntry[]>([
@@ -60,7 +61,10 @@ export function PropertyAgentPanel({ listing }: PropertyAgentPanelProps) {
         <View style={styles.orb}>
           <ZMark size={16} color={colors.white} />
         </View>
-        <Text style={styles.headerText}>Suzi</Text>
+        <View>
+          <Text style={styles.headerText}>Suzi</Text>
+          <Text style={styles.headerSub}>Answers from this listing’s facts · replies instantly</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.messages} nestedScrollEnabled>
@@ -71,33 +75,38 @@ export function PropertyAgentPanel({ listing }: PropertyAgentPanelProps) {
         ))}
         {thinking ? (
           <View style={[styles.bubble, styles.bubbleAgent, styles.thinking]}>
-            <ActivityIndicator size="small" color={colors.brand500} />
+            <ActivityIndicator size="small" color={colors.primary} />
             <Text style={styles.thinkingText}>Suzi is thinking</Text>
           </View>
         ) : null}
       </ScrollView>
 
-      <View style={styles.suggestions}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestions} contentContainerStyle={{ gap: spacing.sm }}>
         {suggestedQuestions.map((q) => (
           <Pressable key={q} style={styles.suggestionChip} onPress={() => ask(q)} disabled={thinking}>
             <Text style={styles.suggestionText}>{q}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
-          placeholder="Ask Suzi about this property…"
-          placeholderTextColor={colors.muted2}
+          placeholder="Ask Suzi about this property"
+          placeholderTextColor={colors.textSecondary}
           value={input}
           onChangeText={setInput}
           onSubmitEditing={() => ask(input)}
           editable={!thinking}
           returnKeyType="send"
         />
-        <Pressable style={styles.sendButton} onPress={() => ask(input)} disabled={thinking} accessibilityLabel="Send">
-          <Ionicons name="arrow-up" size={16} color={colors.white} />
+        <Pressable
+          style={[styles.sendButton, (!input.trim() || thinking) && styles.sendButtonIdle]}
+          onPress={() => ask(input)}
+          disabled={thinking}
+          accessibilityLabel="Send"
+        >
+          <Ionicons name="arrow-up" size={18} color={colors.white} />
         </Pressable>
       </View>
 
@@ -107,32 +116,33 @@ export function PropertyAgentPanel({ listing }: PropertyAgentPanelProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: colors.paper2, borderRadius: radius.xl, padding: spacing.lg },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md, gap: spacing.sm },
+  wrap: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, backgroundColor: colors.white },
+  header: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md, gap: spacing.sm + 2 },
   orb: {
-    width: 28, height: 28, borderRadius: radius.pill, backgroundColor: colors.brand500,
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary,
     alignItems: "center", justifyContent: "center",
   },
-  headerText: { ...typography.bodyMedium, color: colors.ink },
+  headerText: { ...typography.bodyBold, color: colors.text },
+  headerSub: { ...typography.micro, color: colors.textSecondary },
   messages: { maxHeight: 240, marginBottom: spacing.md },
-  bubble: { padding: spacing.sm + 2, borderRadius: radius.lg, marginBottom: spacing.sm, maxWidth: "85%" },
-  bubbleAgent: { backgroundColor: colors.white, alignSelf: "flex-start", borderWidth: 1, borderColor: colors.border },
-  bubbleUser: { backgroundColor: colors.brand900, alignSelf: "flex-end" },
-  bubbleTextAgent: { ...typography.small, color: colors.ink2 },
-  bubbleTextUser: { ...typography.small, color: colors.white },
+  bubble: { paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, borderRadius: radius.lg, marginBottom: spacing.sm, maxWidth: "85%" },
+  bubbleAgent: { backgroundColor: colors.bgSecondary, alignSelf: "flex-start", borderBottomLeftRadius: radius.xs },
+  bubbleUser: { backgroundColor: colors.primaryDeep, alignSelf: "flex-end", borderBottomRightRadius: radius.xs },
+  bubbleTextAgent: { ...typography.small, lineHeight: 20, color: colors.text },
+  bubbleTextUser: { ...typography.small, lineHeight: 20, color: colors.white },
   thinking: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  thinkingText: { ...typography.small, color: colors.muted },
-  suggestions: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.sm },
+  thinkingText: { ...typography.small, color: colors.textSecondary },
+  suggestions: { marginBottom: spacing.md, marginHorizontal: -spacing.md, paddingHorizontal: spacing.md },
   suggestionChip: {
-    backgroundColor: colors.white, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border,
-    paddingVertical: spacing.xs + 1, paddingHorizontal: spacing.sm + 2, marginRight: spacing.xs, marginBottom: spacing.xs,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingVertical: spacing.sm, paddingHorizontal: spacing.md - 2,
   },
-  suggestionText: { ...typography.micro, color: colors.ink2, textTransform: "none" },
-  inputRow: { flexDirection: "row", alignItems: "center" },
+  suggestionText: { ...typography.micro, fontWeight: "500", color: colors.text },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   input: {
-    flex: 1, backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, marginRight: spacing.sm, color: colors.ink,
+    flex: 1, height: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill,
+    paddingHorizontal: spacing.md, color: colors.text, ...typography.small,
   },
-  sendButton: { backgroundColor: colors.brand500, borderRadius: radius.pill, padding: spacing.sm + 4, ...shadow.float },
-  disclaimer: { ...typography.micro, color: colors.muted, marginTop: spacing.sm, fontWeight: "400" },
+  sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  sendButtonIdle: { backgroundColor: colors.textTertiary },
+  disclaimer: { ...typography.micro, color: colors.textSecondary, marginTop: spacing.sm + 2 },
 });

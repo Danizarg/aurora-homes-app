@@ -10,11 +10,12 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.paper },
+          contentStyle: { backgroundColor: colors.bg },
         }}
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="listing/[id]" options={{ presentation: "card" }} />
+        <Stack.Screen name="search-modal" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
         <Stack.Screen name="create-listing/index" options={{ presentation: "fullScreenModal" }} />
       </Stack>
     </SafeAreaProvider>

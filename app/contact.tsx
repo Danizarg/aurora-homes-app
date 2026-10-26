@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../constants/theme";
+import { colors, spacing, typography } from "../constants/theme";
 import { Button } from "../components/ui/Button";
 import { Chip } from "../components/ui/Chip";
+import { TextField } from "../components/ui/TextField";
+import { ScreenHeader } from "../components/ui/ScreenHeader";
 import type { ContactReason } from "../types";
 
 const reasons: { key: ContactReason; label: string }[] = [
@@ -26,27 +28,22 @@ export default function ContactScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.ink} />
-        </Pressable>
-
+      <ScreenHeader title="Contact us" leading="back" />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {submitted ? (
           <View style={styles.successWrap}>
             <Ionicons name="checkmark-circle" size={48} color={colors.success} />
             <Text style={styles.successTitle}>Thanks for reaching out</Text>
             <Text style={styles.subtitle}>We’ll get back to you at {email} shortly.</Text>
-            <Button label="Back to home" style={{ marginTop: spacing.lg }} onPress={() => router.replace("/(tabs)")} />
+            <Button label="Back to home" variant="dark" style={{ marginTop: spacing.lg, alignSelf: "stretch" }} onPress={() => router.replace("/(tabs)")} />
           </View>
         ) : (
           <>
-            <Text style={styles.title}>Contact Zouza</Text>
+            <Text style={styles.title}>How can we help?</Text>
             <Text style={styles.subtitle}>Have a question, or want to partner with us? Send a message below.</Text>
 
-            <Text style={styles.label}>Name</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={colors.muted} />
-            <Text style={styles.label}>Email</Text>
-            <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.muted} />
+            <TextField label="Name" value={name} onChangeText={setName} placeholder="Your name" />
+            <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" />
 
             <Text style={styles.label}>Reason</Text>
             <View style={styles.chipRow}>
@@ -55,17 +52,9 @@ export default function ContactScreen() {
               ))}
             </View>
 
-            <Text style={styles.label}>Message</Text>
-            <TextInput
-              style={[styles.input, { height: 110, textAlignVertical: "top" }]}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              placeholder="How can we help?"
-              placeholderTextColor={colors.muted}
-            />
+            <TextField label="Message" value={message} onChangeText={setMessage} multiline placeholder="Tell us a bit more" />
 
-            <Button label="Submit" style={{ marginTop: spacing.lg }} onPress={() => setSubmitted(true)} disabled={!name || !email || !message} />
+            <Button label="Send message" variant="dark" style={{ marginTop: spacing.sm }} onPress={() => setSubmitted(true)} disabled={!name || !email || !message} />
           </>
         )}
       </ScrollView>
@@ -74,16 +63,12 @@ export default function ContactScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.paper },
+  safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { ...typography.h1, color: colors.ink },
-  subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.lg },
-  label: { ...typography.bodyMedium, color: colors.ink, marginBottom: spacing.xs, marginTop: spacing.md },
-  input: {
-    backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.ink, ...typography.body,
-  },
-  chipRow: { flexDirection: "row", flexWrap: "wrap" },
+  title: { ...typography.h1, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.lg },
+  label: { ...typography.bodyBold, color: colors.text, marginBottom: spacing.sm },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.sm },
   successWrap: { alignItems: "center", paddingTop: spacing.xxl },
-  successTitle: { ...typography.h2, color: colors.ink, marginTop: spacing.md },
+  successTitle: { ...typography.h2, color: colors.text, marginTop: spacing.md },
 });

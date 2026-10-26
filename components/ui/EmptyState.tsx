@@ -1,31 +1,32 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography } from "../../constants/theme";
+import { Button } from "./Button";
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export function EmptyState({ icon = "home-outline", title, subtitle }: EmptyStateProps) {
+/** Airbnb-style empty state: left-aligned heading, grey body, dark button. */
+export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: EmptyStateProps) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={30} color={colors.brand500} />
-      </View>
+      {icon ? <Ionicons name={icon} size={32} color={colors.text} style={{ marginBottom: spacing.md }} /> : null}
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {actionLabel ? (
+        <Button label={actionLabel} variant="dark" onPress={onAction} style={{ alignSelf: "flex-start", marginTop: spacing.lg }} />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", justifyContent: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  iconWrap: {
-    width: 64, height: 64, borderRadius: radius.pill, backgroundColor: colors.paper2,
-    alignItems: "center", justifyContent: "center",
-  },
-  title: { ...typography.h3, color: colors.ink, marginTop: spacing.lg, textAlign: "center" },
-  subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.xs, textAlign: "center" },
+  wrap: { paddingVertical: spacing.xl },
+  title: { ...typography.h2, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
 });

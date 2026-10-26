@@ -1,22 +1,31 @@
 import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
-import { Badge } from "../../components/ui/Badge";
+import { Avatar } from "../../components/ui/Avatar";
+import { Divider } from "../../components/ui/Divider";
 import { getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
 import { mockViewingRequests } from "../../lib/mock/messages";
 
-const menuItems = [
-  { icon: "business-outline" as const, label: "Owner dashboard", route: "/owner-dashboard" },
-  { icon: "mail-outline" as const, label: "Contact Zouza", route: "/contact" },
-  { icon: "shield-checkmark-outline" as const, label: "Trust & verification", route: "/trust" },
-  { icon: "pricetag-outline" as const, label: "Pricing & fees", route: "/pricing" },
-  { icon: "document-text-outline" as const, label: "Terms of service", route: "/legal/terms" },
-  { icon: "lock-closed-outline" as const, label: "Privacy policy", route: "/legal/privacy" },
+type MenuItem = { icon: keyof typeof Ionicons.glyphMap; label: string; route: string };
+
+const settings: MenuItem[] = [
+  { icon: "business-outline", label: "Owner dashboard", route: "/owner-dashboard" },
+  { icon: "shield-checkmark-outline", label: "Trust & verification", route: "/trust" },
+  { icon: "pricetag-outline", label: "Pricing & fees", route: "/pricing" },
+  { icon: "notifications-outline", label: "Notifications", route: "/(tabs)/messages" },
 ];
 
+const support: MenuItem[] = [
+  { icon: "help-circle-outline", label: "Contact Zouza", route: "/contact" },
+  { icon: "document-text-outline", label: "Terms of service", route: "/legal/terms" },
+  { icon: "lock-closed-outline", label: "Privacy policy", route: "/legal/privacy" },
+  { icon: "information-circle-outline", label: "Disclaimer", route: "/legal/disclaimer" },
+];
+
+/** Airbnb Profile: large title, elevated identity card, two stat tiles, "host" promo card, settings lists with hairlines. */
 export default function ProfileScreen() {
   const [savedCount, setSavedCount] = useState(0);
   const [myListingsCount, setMyListingsCount] = useState(0);
@@ -30,76 +39,106 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitial}>A</Text>
-          </View>
-          <View>
-            <Text style={styles.name}>Demo account</Text>
-            <Badge label="Not yet verified" tone="muted" />
-          </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Profile</Text>
+          <Ionicons name="notifications-outline" size={26} color={colors.text} />
         </View>
 
-        <View style={styles.statsRow}>
-          <StatCard label="My listings" value={myListingsCount} onPress={() => router.push("/owner-dashboard")} />
-          <StatCard label="Saved homes" value={savedCount} onPress={() => router.push("/(tabs)/search")} />
-          <StatCard label="Viewing requests" value={mockViewingRequests.length} onPress={() => router.push("/owner-dashboard")} />
+        <View style={styles.identityCard}>
+          <Avatar name="Zouza" size={88} />
+          <Text style={styles.name}>Zouza Demo</Text>
+          <Text style={styles.role}>Guest · Not yet verified</Text>
         </View>
 
-        <View style={styles.menu}>
-          {menuItems.map((item) => (
-            <Pressable key={item.label} style={styles.menuRow} onPress={() => router.push(item.route as never)}>
-              <Ionicons name={item.icon} size={20} color={colors.brand500} />
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-            </Pressable>
-          ))}
+        <View style={styles.tiles}>
+          <StatTile icon="albums-outline" label="My listings" value={myListingsCount} onPress={() => router.push("/owner-dashboard")} />
+          <StatTile icon="heart-outline" label="Saved homes" value={savedCount} onPress={() => router.push("/(tabs)/wishlists")} />
+          <StatTile icon="calendar-outline" label="Viewings" value={mockViewingRequests.length} onPress={() => router.push("/owner-dashboard")} />
         </View>
+
+        <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.hostTitle}>List your home with Suzi</Text>
+            <Text style={styles.hostBody}>Upload photos — Suzi writes the exposé, FAQ and translations. €20/month, no commission.</Text>
+          </View>
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-profile-host/200/200" }} style={styles.hostImage} />
+        </Pressable>
+
+        <Text style={styles.sectionTitle}>Settings</Text>
+        {settings.map((item, i) => (
+          <MenuRow key={item.label} item={item} last={i === settings.length - 1} />
+        ))}
+
+        <Divider gap={spacing.md} />
+
+        <Text style={styles.sectionTitle}>Support & legal</Text>
+        {support.map((item, i) => (
+          <MenuRow key={item.label} item={item} last={i === support.length - 1} />
+        ))}
+
+        <Divider gap={spacing.md} />
 
         <Pressable
-          style={styles.logoutRow}
           onPress={async () => {
             await setMockSession(null);
             router.replace("/auth/login");
           }}
+          style={{ paddingVertical: spacing.sm }}
         >
-          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-          <Text style={styles.logoutLabel}>Log out</Text>
+          <Text style={styles.logout}>Log out</Text>
         </Pressable>
+        <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function StatCard({ label, value, onPress }: { label: string; value: number; onPress: () => void }) {
+function StatTile({ icon, label, value, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: number; onPress: () => void }) {
   return (
-    <Pressable style={styles.statCard} onPress={onPress}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <Pressable style={({ pressed }) => [styles.tile, pressed && { backgroundColor: colors.bgSecondary }]} onPress={onPress}>
+      <Ionicons name={icon} size={24} color={colors.text} />
+      <Text style={styles.tileValue}>{value}</Text>
+      <Text style={styles.tileLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function MenuRow({ item, last }: { item: MenuItem; last?: boolean }) {
+  return (
+    <Pressable style={[styles.menuRow, last && { borderBottomWidth: 0 }]} onPress={() => router.push(item.route as never)}>
+      <Ionicons name={item.icon} size={24} color={colors.text} />
+      <Text style={styles.menuLabel}>{item.label}</Text>
+      <Ionicons name="chevron-forward" size={18} color={colors.text} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.paper },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  profileHeader: { flexDirection: "row", alignItems: "center", marginBottom: spacing.lg },
-  avatar: { width: 56, height: 56, borderRadius: radius.pill, backgroundColor: colors.paper2, alignItems: "center", justifyContent: "center", marginRight: spacing.md },
-  avatarInitial: { ...typography.h1, color: colors.brand600 },
-  name: { ...typography.h3, color: colors.ink, marginBottom: spacing.xs },
-  statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xl },
-  statCard: {
-    flex: 1, backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginRight: spacing.sm, alignItems: "center", ...shadow.soft,
+  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.lg },
+  title: { ...typography.display, color: colors.text },
+  identityCard: {
+    alignItems: "center", backgroundColor: colors.white, borderRadius: radius.xl, paddingVertical: spacing.lg + spacing.sm,
+    ...shadow.card, marginBottom: spacing.lg,
   },
-  statValue: { ...typography.h1, color: colors.ink },
-  statLabel: { ...typography.micro, color: colors.muted, textTransform: "none", marginTop: spacing.xs, textAlign: "center" },
-  menu: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
-  menuRow: {
-    flexDirection: "row", alignItems: "center", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.md,
+  name: { ...typography.h2, color: colors.text, marginTop: spacing.md },
+  role: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  tiles: { flexDirection: "row", gap: spacing.sm + 2, marginBottom: spacing.lg },
+  tile: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, backgroundColor: colors.white },
+  tileValue: { ...typography.h3, color: colors.text, marginTop: spacing.sm + 4 },
+  tileLabel: { ...typography.micro, color: colors.textSecondary, marginTop: 2 },
+  hostCard: {
+    flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.white, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.xl,
   },
-  menuLabel: { ...typography.body, color: colors.ink, flex: 1 },
-  logoutRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.xl, gap: spacing.sm },
-  logoutLabel: { ...typography.bodyMedium, color: colors.danger },
+  hostTitle: { ...typography.bodyBold, color: colors.text },
+  hostBody: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  hostImage: { width: 72, height: 72, borderRadius: radius.sm, backgroundColor: colors.bgSecondary },
+  sectionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
+  menuRow: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  menuLabel: { ...typography.body, color: colors.text, flex: 1 },
+  logout: { ...typography.body, color: colors.text, textDecorationLine: "underline" },
+  version: { ...typography.micro, color: colors.textSecondary, marginTop: spacing.lg },
 });

@@ -1,9 +1,11 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Image, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, radius, spacing, typography } from "../../constants/theme";
 import type { Listing } from "../../types";
 import { Badge } from "../ui/Badge";
+import { formatRating, headlineFor, highlightFor, isGuestFavourite, priceParts, specsLine } from "../../lib/listings/presentation";
 
 interface ListingCardProps {
   listing: Listing;
@@ -11,114 +13,142 @@ interface ListingCardProps {
   onToggleSave?: (id: string) => void;
 }
 
-const modeLabel: Record<Listing["mode"], string> = {
-  rent: "Rent",
-  buy: "Buy",
-  stay: "Stay",
-  live: "Live",
-};
-
+/**
+ * Full-width feed card (Airbnb search results): swipeable square photo
+ * carousel with dots, heart top-right, "Guest favourite" top-left, then
+ * headline · rating, two grey lines and a bold price.
+ */
 export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) {
-  const isSale = listing.mode === "buy";
-  const price = isSale
-    ? `${listing.price_sale?.toLocaleString("en-GB")} €`
-    : `${listing.price_monthly?.toLocaleString("en-GB")} €/mo`;
+  const [index, setIndex] = useState(0);
+  const [width, setWidth] = useState(0);
+  const { amount, unit } = priceParts(listing);
 
-  const summary = [
-    `${listing.bedrooms} bd`,
-    `${listing.bathrooms} ba`,
-    `${listing.size_m2} m²`,
-    listing.sea_view ? "Sea view" : listing.pool ? "Pool" : listing.garage ? "Garage" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (!width) return;
+    setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+  }
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={() => router.push(`/listing/${listing.id}`)}
-    >
-      <View>
-        <Image source={{ uri: listing.images[0]?.uri }} style={styles.image} />
-        <View style={styles.badgeRow}>
-          <Badge label={modeLabel[listing.mode]} tone="light" />
-          {listing.verified_property ? (
-            <View style={styles.verifiedChip}>
-              <Ionicons name="shield-checkmark" size={11} color={colors.success} />
-              <Text style={styles.verifiedChipText}>Verified</Text>
-            </View>
-          ) : null}
-        </View>
-        {onToggleSave ? (
-          <Pressable
-            style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
-            onPress={() => onToggleSave(listing.id)}
-            hitSlop={8}
+    <Pressable style={styles.card} onPress={() => router.push(`/listing/${listing.id}`)}>
+      <View style={styles.media} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        {width > 0 ? (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={onScrollEnd}
+            style={styles.carousel}
           >
-            <Ionicons
-              name={saved ? "heart" : "heart-outline"}
-              size={18}
-              color={saved ? colors.brand500 : colors.ink}
-            />
-          </Pressable>
+            {listing.images.map((image) => (
+              <Image key={image.id} source={{ uri: image.uri }} style={{ width, height: width }} />
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {isGuestFavourite(listing) ? <Badge label="Guest favourite" style={styles.badge} /> : null}
+
+        <HeartButton saved={saved} onPress={onToggleSave ? () => onToggleSave(listing.id) : undefined} />
+
+        {listing.images.length > 1 ? (
+          <View style={styles.dots}>
+            {listing.images.slice(0, 5).map((_, i) => (
+              <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+            ))}
+          </View>
         ) : null}
       </View>
+
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>{listing.title}</Text>
-          <Text style={styles.price}>{price}</Text>
+          <Text style={styles.title} numberOfLines={1}>{headlineFor(listing)}</Text>
+          <View style={styles.rating}>
+            <Ionicons name="star" size={12} color={colors.text} />
+            <Text style={styles.ratingText}>{formatRating(listing)}</Text>
+          </View>
         </View>
-        <Text style={styles.location} numberOfLines={1}>{listing.address_area}, {listing.city}</Text>
-        <Text style={styles.summary} numberOfLines={1}>{summary}</Text>
+        <Text style={styles.meta} numberOfLines={1}>{listing.address_area} · {highlightFor(listing)}</Text>
+        <Text style={styles.meta} numberOfLines={1}>{specsLine(listing)}</Text>
+        <Text style={styles.price}>
+          <Text style={styles.priceAmount}>{amount}</Text>
+          {unit ? <Text style={styles.priceUnit}> {unit}</Text> : null}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
+interface CompactListingCardProps extends ListingCardProps {
+  width: number;
+}
+
+/**
+ * Compact card used in horizontal carousels on Explore ("Popular homes in
+ * Marbella"): square photo, headline, "€1,200 month · ★ 4.92".
+ */
+export function CompactListingCard({ listing, saved, onToggleSave, width }: CompactListingCardProps) {
+  const { amount, unit } = priceParts(listing);
+  return (
+    <Pressable style={[styles.compact, { width }]} onPress={() => router.push(`/listing/${listing.id}`)}>
+      <View style={[styles.media, { height: width }]}>
+        <Image source={{ uri: listing.images[0]?.uri }} style={[styles.compactImage, { width, height: width }]} />
+        {isGuestFavourite(listing) ? <Badge label="Guest favourite" style={styles.badgeCompact} /> : null}
+        <View style={styles.heartCompact}>
+          <HeartButton saved={saved} onPress={onToggleSave ? () => onToggleSave(listing.id) : undefined} size={22} />
+        </View>
+      </View>
+      <Text style={styles.compactTitle} numberOfLines={1}>{headlineFor(listing)}</Text>
+      <Text style={styles.compactMeta} numberOfLines={1}>
+        {amount}{unit ? ` ${unit}` : ""} · <Ionicons name="star" size={11} color={colors.textSecondary} /> {formatRating(listing)}
+      </Text>
+    </Pressable>
+  );
+}
+
+export function HeartButton({ saved, onPress, size = 24 }: { saved?: boolean; onPress?: () => void; size?: number }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.heart, pressed && { transform: [{ scale: 0.9 }] }]}
+      onPress={onPress}
+      hitSlop={10}
+      disabled={!onPress}
+    >
+      <Ionicons name="heart" size={size} color={saved ? colors.primary : "rgba(0,0,0,0.5)"} style={StyleSheet.absoluteFill} />
+      <Ionicons name="heart-outline" size={size} color={colors.white} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: radius.xl,
+  card: { marginBottom: spacing.lg + spacing.sm },
+  media: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: radius.md,
     overflow: "hidden",
-    marginBottom: spacing.xl,
-    ...shadow.card,
+    backgroundColor: colors.bgSecondary,
   },
-  cardPressed: {
-    opacity: 0.92,
+  carousel: { flex: 1 },
+  badge: { position: "absolute", top: spacing.md, left: spacing.md },
+  badgeCompact: { position: "absolute", top: spacing.sm + 2, left: spacing.sm + 2, paddingVertical: 4, paddingHorizontal: spacing.sm },
+  heart: { position: "absolute", top: spacing.md - 2, right: spacing.md - 2, width: 28, height: 28, alignItems: "center", justifyContent: "center" },
+  heartCompact: { position: "absolute", top: 0, right: 0 },
+  dots: {
+    position: "absolute", bottom: spacing.md, left: 0, right: 0,
+    flexDirection: "row", justifyContent: "center", gap: 5,
   },
-  image: { width: "100%", aspectRatio: 4 / 3, backgroundColor: colors.paper2 },
-  badgeRow: {
-    position: "absolute",
-    top: spacing.sm + 2,
-    left: spacing.sm + 2,
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  verifiedChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    borderRadius: radius.pill,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    ...shadow.float,
-  },
-  verifiedChipText: { ...typography.micro, color: colors.success, textTransform: "none" },
-  saveButton: {
-    position: "absolute",
-    top: spacing.sm + 2,
-    right: spacing.sm + 2,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    borderRadius: radius.pill,
-    padding: spacing.sm - 1,
-    ...shadow.float,
-  },
-  saveButtonPressed: { opacity: 0.8 },
-  body: { padding: spacing.md, paddingTop: spacing.md - 2 },
-  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: spacing.sm },
-  title: { ...typography.h3, color: colors.ink, flex: 1 },
-  price: { ...typography.h3, color: colors.ink },
-  location: { ...typography.small, color: colors.muted, marginTop: 3 },
-  summary: { ...typography.small, color: colors.muted, marginTop: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.55)" },
+  dotActive: { backgroundColor: colors.white },
+  body: { paddingTop: spacing.sm + 2 },
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  title: { ...typography.smallBold, fontSize: 15, color: colors.text, flex: 1 },
+  rating: { flexDirection: "row", alignItems: "center", gap: 3 },
+  ratingText: { ...typography.small, color: colors.text },
+  meta: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  price: { marginTop: spacing.sm - 2 },
+  priceAmount: { ...typography.smallBold, fontSize: 15, color: colors.text },
+  priceUnit: { ...typography.small, color: colors.text },
+  compact: { marginRight: spacing.md - 4 },
+  compactImage: { borderRadius: radius.md },
+  compactTitle: { ...typography.smallMedium, color: colors.text, marginTop: spacing.sm },
+  compactMeta: { ...typography.micro, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 });

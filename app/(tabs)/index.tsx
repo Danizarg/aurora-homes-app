@@ -1,223 +1,228 @@
-import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { useCallback, useMemo, useState } from "react";
+import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
-import { ZMark } from "../../components/brand/ZMark";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
+import { colors, radius, spacing, typography } from "../../constants/theme";
+import { SearchPill } from "../../components/search/SearchPill";
+import { CategoryTabs, categories, type Category } from "../../components/search/CategoryTabs";
+import { FiltersSheet } from "../../components/search/FiltersSheet";
+import { CompactListingCard, ListingCard } from "../../components/listings/ListingCard";
 import { SectionHeader } from "../../components/ui/SectionHeader";
-import { getListingById } from "../../lib/mock/listings";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { IconButton } from "../../components/ui/IconButton";
+import { mockListings } from "../../lib/mock/listings";
+import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
+import { isSupabaseConfigured } from "../../lib/supabase/client";
+import { fetchPublishedListings } from "../../lib/supabase/listings";
+import { applyFilters, countActiveFilters, defaultFilters, type FiltersState, type SortOrder } from "../../lib/listings/filter";
+import type { Listing } from "../../types";
 
-const quickPaths = [
-  { key: "rent", title: "Rent", micro: "Mieten", icon: "home-outline" as const, route: "/(tabs)/search" },
-  { key: "buy", title: "Buy", micro: "Kaufen", icon: "business-outline" as const, route: "/(tabs)/search" },
-  { key: "sell", title: "Sell", micro: "Verkaufen", icon: "pricetag-outline" as const, route: "/sell" },
-  { key: "rent_out", title: "Rent out", micro: "Vermieten", icon: "key-outline" as const, route: "/rent-out" },
-];
+type Params = { q?: string; mode?: string; type?: string; priceMax?: string };
 
-const carouselIds = ["l6", "l7", "l8", "l3", "l2"];
-const destinations = ["Marbella", "Sevilla", "Valencia", "Málaga", "Madrid", "Barcelona"];
+const modeKeys: Category[] = ["all", "stay", "rent", "buy", "live"];
 
-export default function HomeScreen() {
-  const [query, setQuery] = useState("");
-  const carouselListings = carouselIds.map((id) => getListingById(id)).filter(Boolean);
+function toCategory(value?: string): Category {
+  return modeKeys.includes(value as Category) ? (value as Category) : "all";
+}
 
-  function handleSearchSubmit() {
-    router.push({ pathname: "/(tabs)/search", params: query.trim() ? { q: query.trim() } : {} });
+export default function ExploreScreen() {
+  const params = useLocalSearchParams<Params>();
+  const { width } = useWindowDimensions();
+
+  const [category, setCategory] = useState<Category>("all");
+  const [filters, setFilters] = useState<FiltersState>(defaultFilters);
+  const [sort, setSort] = useState<SortOrder>("recommended");
+  const [showFilters, setShowFilters] = useState(false);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [remoteListings, setRemoteListings] = useState<Listing[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      getSavedListingIds().then(setSavedIds);
+      if (isSupabaseConfigured) fetchPublishedListings().then(setRemoteListings);
+    }, [])
+  );
+
+  // A query, a type or a price coming from the search modal switches Explore into results mode.
+  const query = params.q?.trim() ?? "";
+  const searching = query.length > 0 || !!params.type || !!params.priceMax;
+  const resultsMode: Category = params.mode ? toCategory(params.mode) : category;
+
+  const effectiveFilters = useMemo<FiltersState>(
+    () => ({
+      ...filters,
+      propertyType: filters.propertyType ?? (params.type as Listing["property_type"] | undefined),
+      priceMax: filters.priceMax ?? (params.priceMax ? Number(params.priceMax) : undefined),
+    }),
+    [filters, params.type, params.priceMax]
+  );
+
+  const allListings = useMemo(() => [...remoteListings, ...mockListings], [remoteListings]);
+
+  const results = useMemo(
+    () => applyFilters(allListings, { mode: resultsMode, query, filters: effectiveFilters, sort }),
+    [allListings, resultsMode, query, effectiveFilters, sort]
+  );
+
+  const homeListings = useMemo(() => applyFilters(allListings, { mode: category, filters: defaultFilters }), [allListings, category]);
+
+  const sections = useMemo(() => {
+    const byCity = new Map<string, Listing[]>();
+    for (const l of homeListings) byCity.set(l.city, [...(byCity.get(l.city) ?? []), l]);
+    return [...byCity.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([city, items], i) => ({
+        key: city,
+        title: i === 0 ? `Popular homes in ${city}` : i === 1 ? `Available next month in ${city}` : `Stay in ${city}`,
+        items,
+      }));
+  }, [homeListings]);
+
+  async function handleToggleSave(id: string) {
+    setSavedIds(await toggleSavedListing(id));
+  }
+
+  function openSearch() {
+    router.push({ pathname: "/search-modal", params: { q: query, mode: resultsMode } });
+  }
+
+  function clearSearch() {
+    router.setParams({ q: "", mode: "", type: "", priceMax: "" });
+    setFilters(defaultFilters);
+  }
+
+  const cardWidth = Math.round((width - spacing.lg * 2) / 2.15);
+  const activeFilterCount = countActiveFilters(effectiveFilters);
+  const modeLabel = categories.find((c) => c.key === resultsMode)?.label ?? "Homes";
+
+  if (searching) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <View style={styles.resultsHeader}>
+          <IconButton icon="chevron-back" variant="outline" size={40} onPress={clearSearch} />
+          <SearchPill onPress={openSearch} query={query || modeLabel} subtitle={`${modeLabel} · ${effectiveFilters.priceMax ? `Up to €${effectiveFilters.priceMax.toLocaleString("en-GB")}` : "Any price"}`} />
+          <View>
+            <IconButton icon="options-outline" variant="outline" size={40} onPress={() => setShowFilters(true)} />
+            {activeFilterCount > 0 ? (
+              <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View>
+            ) : null}
+          </View>
+        </View>
+
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.resultsContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <Text style={styles.resultsCount}>
+              {results.length === 0 ? "No homes" : results.length === 1 ? "1 home" : `${results.length} homes`}
+              {query ? ` in ${query}` : ""}
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <ListingCard listing={item} saved={savedIds.includes(item.id)} onToggleSave={handleToggleSave} />
+          )}
+          ListEmptyComponent={
+            <EmptyState
+              title="No exact matches"
+              subtitle="Try changing or removing some of your filters or adjusting your search area."
+              actionLabel="Remove all filters"
+              onAction={() => { setFilters(defaultFilters); router.setParams({ type: "", priceMax: "" }); }}
+            />
+          }
+        />
+
+        <FiltersSheet
+          visible={showFilters}
+          onClose={() => setShowFilters(false)}
+          filters={effectiveFilters}
+          onChange={setFilters}
+          sort={sort}
+          onSortChange={setSort}
+          mode={resultsMode}
+          resultCount={results.length}
+        />
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Find your next home.</Text>
-          <Text style={styles.heroTitleAccent}>Powered by AI.</Text>
+      <View style={styles.header}>
+        <View style={styles.pillRow}>
+          <SearchPill onPress={openSearch} />
         </View>
+        <CategoryTabs value={category} onChange={setCategory} />
+      </View>
 
-        {/* Search prompt */}
-        <Text style={styles.searchPrompt}>Where do you want to live?</Text>
-        <Pressable style={styles.searchBar} onPress={() => router.push("/(tabs)/search")}>
-          <Ionicons name="search" size={20} color={colors.muted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="City, area, or country"
-            placeholderTextColor={colors.muted}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={handleSearchSubmit}
-            returnKeyType="search"
-          />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.homeContent}>
+        {sections.map((section) => (
+          <View key={section.key} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <SectionHeader title={section.title} onPress={() => router.setParams({ q: section.key, mode: category })} />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
+              {section.items.map((listing) => (
+                <CompactListingCard
+                  key={listing.id}
+                  listing={listing}
+                  width={cardWidth}
+                  saved={savedIds.includes(listing.id)}
+                  onToggleSave={handleToggleSave}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ))}
+
+        {sections.length === 0 ? (
+          <View style={{ paddingHorizontal: spacing.lg }}>
+            <EmptyState title="Nothing here yet" subtitle="There are no homes in this category right now." />
+          </View>
+        ) : null}
+
+        <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-host/600/400" }} style={styles.hostImage} />
+          <View style={styles.hostBody}>
+            <Text style={styles.hostTitle}>List your home with Suzi</Text>
+            <Text style={styles.hostText}>Upload photos. Suzi writes the listing, FAQ and translations for you. €20/month, no commission.</Text>
+            <Text style={styles.hostLink}>Learn more</Text>
+          </View>
         </Pressable>
-
-        {/* Visual carousel */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.carousel}
-          contentContainerStyle={{ paddingRight: spacing.lg }}
-        >
-          {carouselListings.map((listing) => (
-            <Pressable
-              key={listing!.id}
-              style={styles.carouselCard}
-              onPress={() => router.push(`/listing/${listing!.id}`)}
-            >
-              <Image source={{ uri: listing!.images[0].uri }} style={styles.carouselImage} />
-              <View style={styles.carouselOverlay}>
-                <Text style={styles.carouselCity}>{listing!.city}</Text>
-                <Text style={styles.carouselTitle} numberOfLines={1}>{listing!.title}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Four quick paths */}
-        <View style={styles.actionsGrid}>
-          {quickPaths.map((action) => (
-            <Pressable
-              key={action.key}
-              style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}
-              onPress={() => router.push(action.route as never)}
-            >
-              <View style={styles.actionIconWrap}>
-                <Ionicons name={action.icon} size={20} color={colors.brand500} />
-              </View>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionMicro}>{action.micro}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* AI feature explanation */}
-        <Card style={styles.aiCard}>
-          <View style={styles.actionIconWrap}>
-            <ZMark size={20} color={colors.brand500} />
-          </View>
-          <Text style={styles.aiCardTitle}>Upload photos. Suzi creates the listing.</Text>
-          <Text style={styles.aiCardBody}>
-            Exposé, FAQ, translations, and a dedicated property assistant — generated automatically.
-          </Text>
-        </Card>
-
-        {/* Owner upload CTA */}
-        <Pressable style={styles.ownerCta} onPress={() => router.push("/(tabs)/ai")}>
-          <Ionicons name="camera-outline" size={22} color={colors.white} />
-          <View style={{ flex: 1, marginLeft: spacing.md }}>
-            <Text style={styles.ownerCtaTitle}>Add property</Text>
-            <Text style={styles.ownerCtaMicro}>Immobilie hinzufügen</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.white} />
-        </Pressable>
-
-        {/* Suzi demo */}
-        <SectionHeader eyebrow="Every listing" title="A dedicated AI property agent" subtitle="Renters and buyers can ask questions 24/7 — availability, pets, price, viewings — answered instantly." />
-        <Card style={{ marginBottom: spacing.xl }}>
-          <View style={styles.chatBubbleThem}>
-            <Text style={styles.chatText}>Is the property still available?</Text>
-          </View>
-          <View style={styles.chatBubbleMe}>
-            <Text style={styles.chatTextMe}>Yes, available from 1 August. Would you like to request a viewing?</Text>
-          </View>
-        </Card>
-
-        {/* Verified homes + price transparency */}
-        <View style={styles.twoCol}>
-          <Card style={styles.halfCard}>
-            <Ionicons name="shield-checkmark-outline" size={22} color={colors.brand500} />
-            <Text style={styles.smallCardTitle}>Verified homes</Text>
-            <Text style={styles.smallCardBody}>Owner and property verification, checked on an ongoing basis.</Text>
-          </Card>
-          <Card style={styles.halfCard}>
-            <Ionicons name="cash-outline" size={22} color={colors.brand500} />
-            <Text style={styles.smallCardTitle}>Real price transparency</Text>
-            <Text style={styles.smallCardBody}>Rent, utilities, deposit, and fees shown clearly — no hidden costs.</Text>
-          </Card>
-        </View>
-
-        {/* Spain-first destinations */}
-        <SectionHeader eyebrow="Spain first" title="Popular destinations" />
-        <View style={styles.destinationsRow}>
-          {destinations.map((d) => (
-            <Pressable key={d} style={styles.destinationChip} onPress={() => router.push({ pathname: "/(tabs)/search", params: { q: d } })}>
-              <Text style={styles.destinationText}>{d}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Card style={{ marginTop: spacing.lg }}>
-          <Text style={styles.smallCardTitle}>No fees. One subscription.</Text>
-          <Text style={styles.smallCardBody}>
-            Owners pay a flat €20/month. Tenants and buyers pay nothing — no commission, no booking fee, nothing added at move-in.
-          </Text>
-          <Pressable onPress={() => router.push("/pricing")}>
-            <Text style={styles.exampleLink}>See pricing →</Text>
-          </Pressable>
-        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.paper },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  hero: { marginTop: spacing.md, marginBottom: spacing.lg },
-  heroTitle: { ...typography.display, color: colors.ink },
-  heroTitleAccent: { ...typography.display, color: colors.brand600 },
-  searchPrompt: { ...typography.h3, color: colors.ink, marginBottom: spacing.sm },
-  searchBar: {
-    flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md + 2,
-    marginBottom: spacing.xl, ...shadow.card,
+  safe: { flex: 1, backgroundColor: colors.bg },
+  header: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  pillRow: { flexDirection: "row", paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
+  homeContent: { paddingTop: spacing.lg, paddingBottom: spacing.xxl },
+  section: { marginBottom: spacing.lg + spacing.sm },
+  sectionHeader: { paddingHorizontal: spacing.lg, marginBottom: -spacing.xs },
+  carousel: { paddingHorizontal: spacing.lg },
+  hostCard: {
+    marginHorizontal: spacing.lg, marginTop: spacing.sm, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, overflow: "hidden", backgroundColor: colors.white,
   },
-  searchInput: { ...typography.body, color: colors.ink, marginLeft: spacing.sm, flex: 1 },
-  carousel: { marginBottom: spacing.xxl, marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
-  carouselCard: { width: 232, height: 280, borderRadius: radius.xl, overflow: "hidden", marginRight: spacing.md, backgroundColor: colors.paper2, ...shadow.soft },
-  carouselImage: { width: "100%", height: "100%" },
-  carouselOverlay: {
-    position: "absolute", bottom: 0, left: 0, right: 0, padding: spacing.md,
-    backgroundColor: "rgba(27,36,48,0.5)",
+  hostImage: { width: "100%", height: 150, backgroundColor: colors.bgSecondary },
+  hostBody: { padding: spacing.lg },
+  hostTitle: { ...typography.h3, color: colors.text },
+  hostText: { ...typography.small, color: colors.textSecondary, marginTop: spacing.xs },
+  hostLink: { ...typography.smallBold, color: colors.text, textDecorationLine: "underline", marginTop: spacing.md },
+
+  resultsHeader: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm + 2,
+    paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.md,
+    backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
-  carouselCity: { ...typography.micro, color: colors.brand300, textTransform: "uppercase" },
-  carouselTitle: { ...typography.bodyMedium, color: colors.white, marginTop: 2 },
-  actionsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: spacing.xl },
-  actionCard: {
-    width: "48%", backgroundColor: colors.white, borderRadius: radius.xl,
-    padding: spacing.lg, marginBottom: spacing.md, ...shadow.soft,
+  filterBadge: {
+    position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+    backgroundColor: colors.text, alignItems: "center", justifyContent: "center",
   },
-  actionCardPressed: { opacity: 0.9 },
-  actionIconWrap: {
-    width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.paper2,
-    alignItems: "center", justifyContent: "center",
-  },
-  actionTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.md },
-  actionMicro: { ...typography.small, color: colors.muted },
-  aiCard: { marginBottom: spacing.lg },
-  aiCardTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.md },
-  aiCardBody: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
-  ownerCta: {
-    flexDirection: "row", alignItems: "center", backgroundColor: colors.brand900, borderRadius: radius.xl,
-    padding: spacing.lg, marginBottom: spacing.xl, ...shadow.card,
-  },
-  ownerCtaTitle: { ...typography.h3, color: colors.white },
-  ownerCtaMicro: { ...typography.small, color: colors.brand300, marginTop: 2 },
-  chatBubbleThem: { backgroundColor: colors.paper2, borderRadius: radius.md, padding: spacing.sm, alignSelf: "flex-start", marginBottom: spacing.sm, maxWidth: "85%" },
-  chatBubbleMe: { backgroundColor: colors.brand900, borderRadius: radius.md, padding: spacing.sm, alignSelf: "flex-end", maxWidth: "85%" },
-  chatText: { ...typography.small, color: colors.ink },
-  chatTextMe: { ...typography.small, color: colors.white },
-  twoCol: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xl },
-  halfCard: { width: "48%" },
-  smallCardTitle: { ...typography.h3, color: colors.ink, marginTop: spacing.sm },
-  smallCardBody: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
-  destinationsRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.xl },
-  destinationChip: {
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radius.pill, paddingVertical: spacing.sm - 2, paddingHorizontal: spacing.md,
-    marginRight: spacing.sm, marginBottom: spacing.sm,
-  },
-  destinationText: { ...typography.small, color: colors.ink, fontWeight: "600" },
-  exampleLink: { ...typography.bodyMedium, color: colors.brand600, marginTop: spacing.sm },
+  filterBadgeText: { color: colors.white, fontSize: 10, fontWeight: "700" },
+  resultsContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl },
+  resultsCount: { ...typography.smallMedium, color: colors.text, textAlign: "center", marginBottom: spacing.md },
 });

@@ -50,28 +50,39 @@ needs no `.env`).
 
 ## Design system
 
-`constants/theme.ts` mirrors `design/tokens.json` in zouza-ai hex for hex
-(design system v2, violet). The brand mark is `components/brand/ZMark.tsx`
-— the same Z mark as the website. Never a sparkles icon for Zouza or Suzi.
+The UI follows the Airbnb mobile app's layout and visual language: white
+canvas, near-black text, hairline dividers, 8/12px radii, pill search bar,
+category tabs, square photo cards with hearts and "Guest favourite" badges,
+sticky price/CTA bars and a gradient primary button. The accent is Zouza's
+violet brand scale (brand-500 `#7255F0`, from `design/tokens.json` in
+zouza-ai); `constants/theme.ts` holds it in one `brand` block, so changing
+those values re-skins the accent across the app. The brand mark is
+`components/brand/ZMark.tsx` — the same Z mark as the website. Never a
+sparkles icon for Zouza or Suzi.
 
 ## Project structure
 
 ```
 app/                    Expo Router screens
-  (tabs)/                Home, Search, Suzi, Messages, Profile
+  (tabs)/                Explore, Wishlists, Suzi, Messages, Profile
+  search-modal.tsx        "Where to?" search sheet (destination, type, budget)
+  wishlists/saved.tsx     Saved homes list
   listing/[id].tsx        Listing detail + Ask Suzi
   create-listing/          List with Suzi (photos → address → price → chat → publish)
   messages/[id].tsx, auth/, legal/, pricing, trust, contact, rent-out, sell
 components/
   brand/ZMark             The brand mark
-  ui/                     Button, Card, Chip, Badge, EmptyState…
-  listings/ListingCard
+  ui/                     Button, Card, Chip, Badge, TextField, ScreenHeader, Divider…
+  search/                 SearchPill, CategoryTabs, FiltersSheet
+  listings/ListingCard    Feed card + CompactListingCard for carousels
+  host/HostLanding        Rent out / Sell landing pages
   ai/PropertyAgentPanel   Per-listing Suzi chat
 lib/
   ai/suzi.ts              Real Suzi via zouza.ai (with fallback)
   ai/service.ts           Deterministic layer
+  listings/               Presentation helpers (price, rating, headline) + filtering
   supabase/, auth/, mock/
-constants/theme.ts        v2 tokens
+constants/theme.ts        Airbnb-style tokens with the Zouza brand accent
 supabase/schema.sql       Postgres schema + RLS
 ```
 
