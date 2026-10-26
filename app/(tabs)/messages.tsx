@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { colors, radius, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Chip } from "../../components/ui/Chip";
 import { IconButton } from "../../components/ui/IconButton";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { mockConversations } from "../../lib/mock/messages";
+import { getConversations, getStoredListings } from "../../lib/mock/storage";
 import { getListingById } from "../../lib/mock/listings";
+import type { Conversation, Listing } from "../../types";
 
-type Filter = "all" | "unread" | "leads";
+type Filter = "all" | "unread" | "bookings";
 
 function relativeTime(iso: string) {
   const date = new Date(iso);
@@ -20,15 +21,24 @@ function relativeTime(iso: string) {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-/** Airbnb Inbox: big title with search/filter circles, filter chips, avatar rows with listing thumbnail. */
+/** Airbnb Inbox: only real threads (started from a booking request or "Message owner"); nothing is seeded. */
 export default function MessagesScreen() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [stored, setStored] = useState<Listing[]>([]);
 
-  const conversations = useMemo(() => {
-    if (filter === "unread") return mockConversations.filter((c) => c.unread);
-    if (filter === "leads") return mockConversations.filter((c) => c.qualified_lead);
-    return mockConversations;
-  }, [filter]);
+  useFocusEffect(
+    useCallback(() => {
+      getConversations().then(setConversations);
+      getStoredListings().then(setStored);
+    }, [])
+  );
+
+  const visible = useMemo(() => {
+    if (filter === "unread") return conversations.filter((c) => c.unread);
+    if (filter === "bookings") return conversations.filter((c) => !!c.booking_id);
+    return conversations;
+  }, [filter, conversations]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -36,26 +46,32 @@ export default function MessagesScreen() {
         <Text style={styles.title}>Messages</Text>
         <View style={styles.headerActions}>
           <IconButton icon="search" size={40} variant="outline" />
-          <IconButton icon="options-outline" size={40} variant="outline" />
+          <IconButton icon="calendar-outline" size={40} variant="outline" onPress={() => router.push("/bookings")} />
         </View>
       </View>
 
       <View style={styles.chips}>
         <Chip label="All" active={filter === "all"} onPress={() => setFilter("all")} />
         <Chip label="Unread" active={filter === "unread"} onPress={() => setFilter("unread")} />
-        <Chip label="Qualified leads" active={filter === "leads"} onPress={() => setFilter("leads")} />
+        <Chip label="Bookings" active={filter === "bookings"} onPress={() => setFilter("bookings")} />
       </View>
 
       <FlatList
-        data={conversations}
+        data={visible}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <EmptyState title="You don't have any messages" subtitle="When you contact an owner or receive an enquiry, you'll see it here." />
+          <EmptyState
+            title="You don’t have any messages"
+            subtitle="When you request dates or message an owner, the conversation shows up here."
+            actionLabel="Start exploring"
+            onAction={() => router.push("/(tabs)")}
+          />
         }
         renderItem={({ item }) => {
-          const thumb = getListingById(item.listing_id)?.images[0]?.uri;
+          const listing = getListingById(item.listing_id) ?? stored.find((l) => l.id === item.listing_id);
+          const thumb = listing?.images[0]?.uri;
           return (
             <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} onPress={() => router.push(`/messages/${item.id}`)}>
               <View style={styles.avatarWrap}>
@@ -69,7 +85,7 @@ export default function MessagesScreen() {
                 </View>
                 <Text style={[styles.preview, item.unread && styles.previewUnread]} numberOfLines={1}>{item.last_message}</Text>
                 <Text style={styles.listing} numberOfLines={1}>
-                  {item.listing_title}{item.qualified_lead ? " · Qualified lead" : ""}
+                  {item.listing_title}{item.booking_id ? " · Booking request" : ""}
                 </Text>
               </View>
               {item.unread ? <View style={styles.unreadDot} /> : null}

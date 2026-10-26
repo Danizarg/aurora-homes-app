@@ -18,6 +18,8 @@ function faq(pairs: [string, string][]) {
 export const mockListings: Listing[] = [
   {
     id: "l1",
+    lat: 36.5095,
+    lng: -4.929,
     owner_id: "owner-1",
     mode: "stay",
     intent: "rent_out",
@@ -59,6 +61,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l2",
+    lat: 37.3858,
+    lng: -5.9906,
     owner_id: "owner-2",
     mode: "rent",
     intent: "rent_out",
@@ -97,6 +101,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l3",
+    lat: 39.479,
+    lng: -0.325,
     owner_id: "owner-3",
     mode: "stay",
     intent: "rent_out",
@@ -136,6 +142,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l4",
+    lat: 36.715,
+    lng: -4.365,
     owner_id: "owner-4",
     mode: "buy",
     intent: "sell",
@@ -169,6 +177,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l5",
+    lat: 40.435,
+    lng: -3.704,
     owner_id: "owner-5",
     mode: "live",
     intent: "rent_out",
@@ -206,6 +216,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l6",
+    lat: 36.523,
+    lng: -4.91,
     owner_id: "owner-1",
     mode: "buy",
     intent: "sell",
@@ -239,6 +251,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l7",
+    lat: 41.395,
+    lng: 2.162,
     owner_id: "owner-6",
     mode: "buy",
     intent: "sell",
@@ -271,6 +285,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l8",
+    lat: 36.723,
+    lng: -4.37,
     owner_id: "owner-7",
     mode: "rent",
     intent: "rent_out",
@@ -309,6 +325,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l9",
+    lat: 40.426,
+    lng: -3.704,
     owner_id: "owner-8",
     mode: "live",
     intent: "rent_out",
@@ -346,6 +364,8 @@ export const mockListings: Listing[] = [
   },
   {
     id: "l10",
+    lat: 36.489,
+    lng: -4.743,
     owner_id: "owner-1",
     mode: "buy",
     intent: "sell",

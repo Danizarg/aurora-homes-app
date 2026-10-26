@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -9,9 +9,17 @@ import { Divider } from "../../components/ui/Divider";
 import { Avatar } from "../../components/ui/Avatar";
 import { IconButton } from "../../components/ui/IconButton";
 import { PropertyAgentPanel } from "../../components/ai/PropertyAgentPanel";
+import { ListingMap } from "../../components/map/ListingMap";
+import { NearbyPlaces } from "../../components/map/NearbyPlaces";
+import { TravelSection } from "../../components/map/TravelSection";
+import { BookingSheet } from "../../components/booking/BookingSheet";
+import { coordsFor } from "../../lib/geo/cities";
+import { openUrl, showOnMapUrl } from "../../lib/geo/travel";
+import type { NearbyPlace } from "../../lib/geo/places";
+import { bookingCopy, bookingKindFor } from "../../lib/booking/dates";
 import { getListingById } from "../../lib/mock/listings";
-import { mockReviews } from "../../lib/mock/messages";
-import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
+import { mockReviews } from "../../lib/mock/reviews";
+import { getSavedListingIds, startConversation, toggleSavedListing } from "../../lib/mock/storage";
 import {
   formatDate,
   formatMoney,
@@ -53,6 +61,10 @@ export default function ListingDetailScreen() {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [allAmenities, setAllAmenities] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [nearby, setNearby] = useState<NearbyPlace[]>([]);
+  const onPlaces = useCallback((places: NearbyPlace[]) => setNearby(places.slice(0, 12)), []);
+  const center = useMemo(() => (listing ? coordsFor(listing) : null), [listing]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,6 +89,13 @@ export default function ListingDetailScreen() {
   const visibleAmenities = allAmenities ? amenities : amenities.slice(0, 6);
   const { amount, unit } = priceParts(listing);
   const galleryHeight = Math.round(width * 0.92);
+  const kind = bookingKindFor(listing);
+  const areaLabel = `${listing.address_area}, ${listing.city}`;
+
+  async function messageOwner() {
+    const conversation = await startConversation(listing!, `Hi! I’m interested in ${listing!.title}. Is it still available?`);
+    router.push(`/messages/${conversation.id}`);
+  }
 
   async function toggleSave() {
     const ids = await toggleSavedListing(listing!.id);
@@ -157,6 +176,7 @@ export default function ListingDetailScreen() {
             </View>
             {listing.verified_owner ? <Ionicons name="shield-checkmark" size={22} color={colors.primary} /> : null}
           </View>
+          <Button label="Message owner" variant="outline" icon="chatbubble-outline" onPress={messageOwner} style={{ marginTop: spacing.md }} />
 
           <Divider />
 
@@ -227,6 +247,25 @@ export default function ListingDetailScreen() {
 
           <Divider />
 
+          {/* Where you’ll be */}
+          <Text style={styles.sectionTitle}>Where you’ll be</Text>
+          <Text style={[styles.muted, { marginBottom: spacing.md }]}>{areaLabel}, {listing.country}. The exact address is shared once a viewing or stay is confirmed.</Text>
+          {center ? <ListingMap center={center} places={nearby} /> : null}
+          <Pressable onPress={() => center && openUrl(showOnMapUrl(center, areaLabel))} style={styles.showMore}>
+            <Text style={styles.showMoreText}>Open in Maps</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.text} />
+          </Pressable>
+          <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>What’s nearby</Text>
+          {center ? <NearbyPlaces center={center} onPlaces={onPlaces} /> : null}
+
+          <Divider />
+
+          {/* How to get there */}
+          <Text style={styles.sectionTitle}>How to get there</Text>
+          {center ? <TravelSection destination={center} destinationLabel={areaLabel} /> : null}
+
+          <Divider />
+
           {/* Reviews */}
           <View style={styles.reviewsHeader}>
             <Ionicons name="star" size={18} color={colors.text} />
@@ -286,10 +325,22 @@ export default function ListingDetailScreen() {
             <Text style={styles.barPriceAmount}>{amount}</Text>
             {unit ? <Text style={styles.barPriceUnit}> {unit}</Text> : null}
           </Text>
-          <Text style={styles.barMeta}>{listing.available_from ? `Available ${formatDate(listing.available_from)}` : "Direct from the owner"}</Text>
+          <Pressable onPress={() => setBookingOpen(true)}>
+            <Text style={styles.barMeta}>{kind === "stay" ? "Select dates" : listing.available_from ? `Available ${formatDate(listing.available_from)}` : "Pick a viewing day"}</Text>
+          </Pressable>
         </View>
-        <Button label={sale ? "Request viewing" : "Request viewing"} onPress={() => router.push("/(tabs)/messages")} style={{ minWidth: 150 }} />
+        <Button label={bookingCopy[kind].cta} onPress={() => setBookingOpen(true)} style={{ minWidth: 150 }} />
       </View>
+
+      <BookingSheet
+        listing={listing}
+        visible={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        onSubmitted={(_booking, conversationId) => {
+          setBookingOpen(false);
+          router.push(`/messages/${conversationId}`);
+        }}
+      />
     </View>
   );
 }

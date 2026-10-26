@@ -1,28 +1,44 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "../../constants/theme";
 import { IconButton } from "../../components/ui/IconButton";
-import { ZMark } from "../../components/brand/ZMark";
 import { Avatar } from "../../components/ui/Avatar";
-import { mockConversations, mockMessages } from "../../lib/mock/messages";
-import type { Message } from "../../types";
+import { ZMark } from "../../components/brand/ZMark";
+import { addMessage, getBookingRequests, getConversation, getMessages, markConversationRead } from "../../lib/mock/storage";
+import { describeBooking } from "../../lib/booking/dates";
+import type { BookingRequest, Conversation, Message } from "../../types";
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const conversation = mockConversations.find((c) => c.id === id);
-  const [messages, setMessages] = useState<Message[]>(mockMessages[id ?? ""] ?? []);
+  const [conversation, setConversation] = useState<Conversation | undefined>();
+  const [booking, setBooking] = useState<BookingRequest | undefined>();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
 
-  function send() {
-    if (!input.trim()) return;
-    setMessages((prev) => [...prev, { id: `${Date.now()}`, conversation_id: id ?? "", sender: "me", text: input.trim(), created_at: new Date().toISOString() }]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      getConversation(id).then(async (c) => {
+        setConversation(c);
+        if (c?.booking_id) setBooking((await getBookingRequests()).find((b) => b.id === c.booking_id));
+      });
+      getMessages(id).then(setMessages);
+      markConversationRead(id);
+    }, [id])
+  );
+
+  async function send() {
+    const text = input.trim();
+    if (!text || !id) return;
     setInput("");
+    const message = await addMessage(id, "me", text);
+    setMessages((prev) => [...prev, message]);
   }
 
-  const name = conversation?.participant_name ?? "Conversation";
+  const name = conversation?.participant_name ?? "Owner";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -38,11 +54,24 @@ export default function ConversationScreen() {
         <IconButton icon="ellipsis-horizontal" variant="plain" size={40} />
       </View>
 
+      {booking ? (
+        <Pressable style={styles.bookingBar} onPress={() => router.push("/bookings")}>
+          <Ionicons name="calendar-outline" size={18} color={colors.text} />
+          <Text style={styles.bookingText} numberOfLines={1}>{describeBooking(booking)}</Text>
+          <Text style={styles.bookingStatus}>{booking.status === "pending" ? "Awaiting owner" : booking.status === "confirmed" ? "Confirmed" : "Declined"}</Text>
+        </Pressable>
+      ) : null}
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={0}>
         <FlatList
           data={messages}
           keyExtractor={(m) => m.id}
           contentContainerStyle={styles.messagesList}
+          ListHeaderComponent={
+            <Text style={styles.notice}>
+              The owner is notified of every message. Suzi answers questions about the home instantly on the listing page.
+            </Text>
+          }
           renderItem={({ item }) => {
             const me = item.sender === "me";
             const ai = item.sender === "ai";
@@ -91,6 +120,13 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center" },
   headerTitle: { ...typography.smallBold, color: colors.text },
   headerSubtitle: { ...typography.micro, color: colors.textSecondary },
+  bookingBar: {
+    flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2,
+    backgroundColor: colors.bgSecondary, borderBottomWidth: 1, borderBottomColor: colors.divider,
+  },
+  bookingText: { ...typography.smallMedium, color: colors.text, flex: 1 },
+  bookingStatus: { ...typography.microBold, color: colors.textSecondary },
+  notice: { ...typography.micro, color: colors.textSecondary, textAlign: "center", marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   messagesList: { padding: spacing.lg, gap: spacing.sm },
   messageRow: { flexDirection: "row", alignItems: "flex-end", maxWidth: "85%" },
   messageRowMe: { alignSelf: "flex-end" },

@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { SearchPill } from "../../components/search/SearchPill";
 import { CategoryTabs, categories, type Category } from "../../components/search/CategoryTabs";
 import { FiltersSheet } from "../../components/search/FiltersSheet";
@@ -133,6 +134,11 @@ export default function ExploreScreen() {
           }
         />
 
+        <Pressable style={styles.mapButton} onPress={() => router.push({ pathname: "/map", params: { q: query, mode: resultsMode === "all" ? "" : resultsMode, type: params.type ?? "", priceMax: params.priceMax ?? "" } })}>
+          <Text style={styles.mapButtonText}>Map</Text>
+          <Ionicons name="map-outline" size={16} color={colors.white} />
+        </Pressable>
+
         <FiltersSheet
           visible={showFilters}
           onClose={() => setShowFilters(false)}
@@ -225,4 +231,9 @@ const styles = StyleSheet.create({
   filterBadgeText: { color: colors.white, fontSize: 10, fontWeight: "700" },
   resultsContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   resultsCount: { ...typography.smallMedium, color: colors.text, textAlign: "center", marginBottom: spacing.md },
+  mapButton: {
+    position: "absolute", bottom: spacing.lg, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    backgroundColor: colors.text, borderRadius: radius.pill, paddingVertical: spacing.sm + 4, paddingHorizontal: spacing.md + 4, ...shadow.card,
+  },
+  mapButtonText: { ...typography.smallBold, color: colors.white },
 });

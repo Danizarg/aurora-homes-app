@@ -10,16 +10,17 @@ import { Button } from "../components/ui/Button";
 import { Divider } from "../components/ui/Divider";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
 import { Avatar } from "../components/ui/Avatar";
-import { getStoredListings } from "../lib/mock/storage";
-import { mockViewingRequests } from "../lib/mock/messages";
+import { getBookingRequests, getStoredListings, updateBookingStatus } from "../lib/mock/storage";
+import { describeBooking } from "../lib/booking/dates";
 import { getCurrentUserId } from "../lib/auth/service";
 import { fetchMyListings } from "../lib/supabase/listings";
 import { priceLine } from "../lib/listings/presentation";
-import type { Listing } from "../types";
+import type { BookingRequest, Listing } from "../types";
 
 /** Airbnb Host "Listings" page: large title, dark "Add listing" button, thumbnail rows, hairline sections. */
 export default function OwnerDashboardScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
+  const [requests, setRequests] = useState<BookingRequest[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -28,6 +29,7 @@ export default function OwnerDashboardScreen() {
         const userId = await getCurrentUserId();
         const supabaseListings = userId ? await fetchMyListings(userId) : [];
         setListings([...supabaseListings, ...localListings]);
+        setRequests(await getBookingRequests());
       })();
     }, [])
   );
@@ -55,15 +57,22 @@ export default function OwnerDashboardScreen() {
 
         <Divider />
 
-        <Text style={styles.sectionTitle}>Viewing requests</Text>
-        {mockViewingRequests.map((v, i) => (
-          <View key={v.id} style={[styles.requestRow, i === mockViewingRequests.length - 1 && { borderBottomWidth: 0 }]}>
-            <Avatar name={v.requester_name} size={44} />
+        <Text style={styles.sectionTitle}>Booking & viewing requests</Text>
+        {requests.length === 0 ? <Text style={styles.muted}>Requests made from any listing’s calendar appear here.</Text> : null}
+        {requests.map((r, i) => (
+          <View key={r.id} style={[styles.requestRow, i === requests.length - 1 && { borderBottomWidth: 0 }]}>
+            <Avatar name="Guest" size={44} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.requestName}>{v.requester_name}</Text>
-              <Text style={styles.requestMeta}>{v.listing_title} · {v.requested_date}</Text>
+              <Text style={styles.requestName} numberOfLines={1}>{r.listing_title}</Text>
+              <Text style={styles.requestMeta}>{describeBooking(r)}{r.guests ? ` · ${r.guests} guests` : ""}</Text>
+              {r.status === "pending" ? (
+                <View style={styles.requestActions}>
+                  <Button label="Confirm" variant="dark" size="sm" onPress={async () => setRequests(await updateBookingStatus(r.id, "confirmed"))} />
+                  <Button label="Decline" variant="outline" size="sm" onPress={async () => setRequests(await updateBookingStatus(r.id, "declined"))} />
+                </View>
+              ) : null}
             </View>
-            <Badge label={v.status === "confirmed" ? "Confirmed" : v.status === "pending" ? "Pending" : "Declined"} tone={v.status === "confirmed" ? "success" : "muted"} />
+            <Badge label={r.status === "confirmed" ? "Confirmed" : r.status === "pending" ? "Pending" : "Declined"} tone={r.status === "confirmed" ? "success" : "muted"} />
           </View>
         ))}
 
@@ -128,6 +137,7 @@ const styles = StyleSheet.create({
   requestRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider },
   requestName: { ...typography.bodyMedium, color: colors.text },
   requestMeta: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  requestActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
   statsRow: { flexDirection: "row", gap: spacing.sm + 2 },
   stat: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
   statValue: { ...typography.h2, color: colors.text },

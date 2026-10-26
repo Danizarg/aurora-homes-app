@@ -34,6 +34,9 @@ create table if not exists listings (
   utilities_monthly numeric,
   deposit numeric,
   total_move_in_cost numeric,
+  -- Approximate area coordinates shown on the listing map (never the exact door).
+  lat double precision,
+  lng double precision,
   available_from date,
   minimum_stay text,
   maximum_stay text,

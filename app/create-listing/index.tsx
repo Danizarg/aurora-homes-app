@@ -28,6 +28,7 @@ import {
   type Positioning,
 } from "../../lib/ai/service";
 import { generateListing } from "../../lib/ai/suzi";
+import { lookupCoords } from "../../lib/geo/cities";
 import type { AiGeneratedContent, Listing } from "../../types";
 import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
@@ -278,6 +279,8 @@ export default function AiListingBuilder() {
       furnished: input.furnished,
       verified_owner: false,
       verified_property: false,
+      lat: lookupCoords(input.addressArea, input.city)?.lat,
+      lng: lookupCoords(input.addressArea, input.city)?.lng,
       status: "published",
       images: imageUris.map((uri, i) => ({ id: `${id}-img-${i}`, listing_id: id, uri, position: i })),
       faq: generated?.faq ?? [],

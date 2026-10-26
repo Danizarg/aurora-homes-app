@@ -6,8 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Divider } from "../../components/ui/Divider";
-import { getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
-import { mockViewingRequests } from "../../lib/mock/messages";
+import { getBookingRequests, getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
 
 type MenuItem = { icon: keyof typeof Ionicons.glyphMap; label: string; route: string };
 
@@ -29,11 +28,13 @@ const support: MenuItem[] = [
 export default function ProfileScreen() {
   const [savedCount, setSavedCount] = useState(0);
   const [myListingsCount, setMyListingsCount] = useState(0);
+  const [bookingsCount, setBookingsCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       getSavedListingIds().then((ids) => setSavedCount(ids.length));
       getStoredListings().then((listings) => setMyListingsCount(listings.length));
+      getBookingRequests().then((b) => setBookingsCount(b.filter((x) => x.status !== "declined").length));
     }, [])
   );
 
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
         <View style={styles.tiles}>
           <StatTile icon="albums-outline" label="My listings" value={myListingsCount} onPress={() => router.push("/owner-dashboard")} />
           <StatTile icon="heart-outline" label="Saved homes" value={savedCount} onPress={() => router.push("/(tabs)/wishlists")} />
-          <StatTile icon="calendar-outline" label="Viewings" value={mockViewingRequests.length} onPress={() => router.push("/owner-dashboard")} />
+          <StatTile icon="calendar-outline" label="Trips & viewings" value={bookingsCount} onPress={() => router.push("/bookings")} />
         </View>
 
         <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
