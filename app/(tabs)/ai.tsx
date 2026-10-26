@@ -1,61 +1,74 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
-import { SectionHeader } from "../../components/ui/SectionHeader";
+import { Divider } from "../../components/ui/Divider";
+import { ListingCard } from "../../components/listings/ListingCard";
 import { PropertyAgentPanel } from "../../components/ai/PropertyAgentPanel";
 import { mockListings } from "../../lib/mock/listings";
 
+const steps = [
+  { title: "Add photos", body: "Upload a handful of photos — interior, exterior, key rooms." },
+  { title: "Add the address", body: "Just the city or area. That's it." },
+  { title: "Add a price (optional)", body: "Set a price now, or let Aurora suggest one later." },
+  { title: "Chat with Aurora", body: "Aurora tells you what it already sees, then asks only what it can't detect." },
+];
+
+/** Center tab, Airbnb "Trips"-style page: large title, hero card with image and gradient CTA, numbered steps. */
 export default function AiHubScreen() {
   const exampleListing = mockListings[0];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Aurora AI</Text>
+
         <View style={styles.hero}>
-          <Ionicons name="sparkles" size={28} color={colors.gold} />
-          <Text style={styles.heroTitle}>Aurora turns photos into a professional listing.</Text>
-          <Text style={styles.heroSubtitle}>
-            Exposé, FAQ, translations, and a dedicated property assistant — built automatically from what you upload.
-          </Text>
-          <Button
-            label="Upload photos"
-            size="lg"
-            style={{ marginTop: spacing.lg }}
-            onPress={() => router.push("/create-listing")}
-          />
-          <Text style={styles.microLabel}>Immobilie hinzufügen</Text>
+          <Image source={{ uri: "https://picsum.photos/seed/aurora-ai-hero/800/520" }} style={styles.heroImage} />
+          <View style={styles.heroBody}>
+            <Text style={styles.heroTitle}>Upload photos. Aurora creates the listing.</Text>
+            <Text style={styles.heroText}>
+              Exposé, FAQ, translations and a dedicated property assistant — built automatically from what you upload.
+            </Text>
+            <Button label="Upload photos" icon="camera-outline" style={{ marginTop: spacing.lg }} onPress={() => router.push("/create-listing")} />
+          </View>
         </View>
 
-        <SectionHeader eyebrow="How it works" title="The AI Listing Builder" />
-        <Card style={{ marginBottom: spacing.xl }}>
-          <BuilderStep icon="camera-outline" title="1. Add photos" body="Upload a handful of photos — interior, exterior, key rooms." />
-          <BuilderStep icon="location-outline" title="2. Add address" body="Just the city or area. That's it." />
-          <BuilderStep icon="pricetag-outline" title="3. Add price (optional)" body="Set a price now, or let Aurora suggest one later." />
-          <BuilderStep icon="chatbubbles-outline" title="4. Chat with Aurora" body="Aurora tells you what it already sees, then asks only what it can't detect." last />
-        </Card>
+        <Divider />
 
-        <SectionHeader eyebrow="Example" title="A listing Aurora generated" />
-        <Card style={{ marginBottom: spacing.xl }}>
-          <Image source={{ uri: exampleListing.images[0].uri }} style={styles.exampleImage} />
-          <Text style={styles.exampleTitle}>{exampleListing.title}</Text>
-          <Text style={styles.exampleSummary} numberOfLines={2}>{exampleListing.description}</Text>
-          <Pressable onPress={() => router.push(`/listing/${exampleListing.id}`)}>
-            <Text style={styles.exampleLink}>View full listing →</Text>
-          </Pressable>
-        </Card>
+        <Text style={styles.sectionTitle}>It's easy to get started</Text>
+        {steps.map((s, i) => (
+          <View key={s.title} style={[styles.step, i === steps.length - 1 && { borderBottomWidth: 0 }]}>
+            <Text style={styles.stepNumber}>{i + 1}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.stepTitle}>{s.title}</Text>
+              <Text style={styles.stepBody}>{s.body}</Text>
+            </View>
+          </View>
+        ))}
 
-        <SectionHeader eyebrow="Every listing" title="Try the Property AI Agent" subtitle="This is the same assistant renters and buyers chat with on a live listing." />
+        <Divider />
+
+        <Text style={styles.sectionTitle}>A listing Aurora generated</Text>
+        <ListingCard listing={exampleListing} />
+
+        <Divider gap={spacing.sm} />
+
+        <Text style={styles.sectionTitle}>Try the property AI agent</Text>
+        <Text style={styles.sectionBody}>This is the same assistant renters and buyers chat with on a live listing.</Text>
         <PropertyAgentPanel listingTitle={exampleListing.title} faq={exampleListing.faq} />
 
-        <Card style={{ marginTop: spacing.xl, marginBottom: spacing.xl }}>
-          <Text style={styles.disclaimerTitle}>What Aurora does not do</Text>
-          <Text style={styles.disclaimerBody}>
-            Aurora Homes does not process payments, hold deposits, collect rent, or provide legal or tax advice. It
-            handles marketing and communication — the agreement is always direct between owner and tenant or buyer.
+        <Card variant="flat" style={{ marginTop: spacing.xl }}>
+          <View style={styles.noteRow}>
+            <Ionicons name="information-circle-outline" size={22} color={colors.text} />
+            <Text style={styles.noteTitle}>What Aurora does not do</Text>
+          </View>
+          <Text style={styles.noteBody}>
+            Aurora Homes does not process payments, hold deposits, collect rent, or provide legal or tax advice. It handles
+            marketing and communication — the agreement is always direct between owner and tenant or buyer.
           </Text>
         </Card>
       </ScrollView>
@@ -63,45 +76,22 @@ export default function AiHubScreen() {
   );
 }
 
-function BuilderStep({
-  icon,
-  title,
-  body,
-  last,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  body: string;
-  last?: boolean;
-}) {
-  return (
-    <View style={[styles.stepRow, last ? { marginBottom: 0 } : null]}>
-      <Ionicons name={icon} size={20} color={colors.gold} style={{ marginTop: 2 }} />
-      <View style={{ flex: 1, marginLeft: spacing.sm }}>
-        <Text style={styles.stepTitle}>{title}</Text>
-        <Text style={styles.stepBody}>{body}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  hero: {
-    alignItems: "center", backgroundColor: colors.white, borderRadius: radius.xl,
-    padding: spacing.xl, marginBottom: spacing.xl, ...shadow.card,
-  },
-  heroTitle: { ...typography.h1, color: colors.navy, textAlign: "center", marginTop: spacing.md },
-  heroSubtitle: { ...typography.body, color: colors.muted, textAlign: "center", marginTop: spacing.sm },
-  microLabel: { ...typography.small, color: colors.gold, marginTop: spacing.sm, fontWeight: "600" },
-  stepRow: { flexDirection: "row", marginBottom: spacing.lg },
-  stepTitle: { ...typography.bodyMedium, color: colors.navy },
-  stepBody: { ...typography.small, color: colors.muted, marginTop: 2 },
-  exampleImage: { width: "100%", height: 180, borderRadius: radius.lg, marginBottom: spacing.md, backgroundColor: colors.sand },
-  exampleTitle: { ...typography.h3, color: colors.navy },
-  exampleSummary: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
-  exampleLink: { ...typography.bodyMedium, color: colors.gold, marginTop: spacing.sm },
-  disclaimerTitle: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
-  disclaimerBody: { ...typography.small, color: colors.muted },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+  title: { ...typography.display, color: colors.text, marginBottom: spacing.lg },
+  hero: { backgroundColor: colors.white, borderRadius: radius.lg, overflow: "hidden", ...shadow.card },
+  heroImage: { width: "100%", height: 200, backgroundColor: colors.bgSecondary },
+  heroBody: { padding: spacing.lg },
+  heroTitle: { ...typography.h2, color: colors.text },
+  heroText: { ...typography.body, color: colors.textSecondary, marginTop: spacing.sm },
+  sectionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.md },
+  sectionBody: { ...typography.body, color: colors.textSecondary, marginTop: -spacing.sm, marginBottom: spacing.md },
+  step: { flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  stepNumber: { ...typography.h3, color: colors.text, width: 24 },
+  stepTitle: { ...typography.bodyBold, color: colors.text },
+  stepBody: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  noteRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
+  noteTitle: { ...typography.bodyBold, color: colors.text },
+  noteBody: { ...typography.small, color: colors.textSecondary },
 });

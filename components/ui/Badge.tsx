@@ -1,24 +1,44 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
 
 interface BadgeProps {
   label: string;
-  tone?: "gold" | "navy" | "terracotta" | "success" | "muted" | "light";
+  /**
+   * light   — white pill with shadow, used on photos ("Guest favourite")
+   * dark    — near-black pill
+   * brand   — brand tint
+   * success — green tint
+   * muted   — light grey
+   * outline — hairline border, no fill
+   */
+  tone?: "light" | "dark" | "brand" | "success" | "muted" | "outline";
+  icon?: keyof typeof Ionicons.glyphMap;
+  style?: ViewStyle;
 }
 
-const toneStyles: Record<string, { bg: string; fg: string }> = {
-  gold: { bg: colors.sand, fg: colors.gold },
-  navy: { bg: colors.navy, fg: colors.white },
-  terracotta: { bg: colors.terracottaSoft, fg: colors.navy },
-  success: { bg: "#E1EDE4", fg: colors.success },
-  muted: { bg: colors.ivoryDeep, fg: colors.muted },
-  light: { bg: "rgba(255,255,255,0.94)", fg: colors.navy },
+const toneStyles: Record<NonNullable<BadgeProps["tone"]>, { bg: string; fg: string; border?: string }> = {
+  light: { bg: colors.white, fg: colors.text },
+  dark: { bg: colors.text, fg: colors.white },
+  brand: { bg: colors.primaryLight, fg: colors.primaryDark },
+  success: { bg: "#E6F4E7", fg: colors.success },
+  muted: { bg: colors.bgSecondary, fg: colors.textSecondary },
+  outline: { bg: "transparent", fg: colors.text, border: colors.border },
 };
 
-export function Badge({ label, tone = "gold" }: BadgeProps) {
+export function Badge({ label, tone = "light", icon, style }: BadgeProps) {
   const t = toneStyles[tone];
   return (
-    <View style={[styles.badge, { backgroundColor: t.bg }, tone === "light" && shadow.float]}>
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: t.bg },
+        t.border ? { borderWidth: 1, borderColor: t.border } : null,
+        tone === "light" && shadow.float,
+        style,
+      ]}
+    >
+      {icon ? <Ionicons name={icon} size={12} color={t.fg} style={{ marginRight: 4 }} /> : null}
       <Text style={[styles.label, { color: t.fg }]}>{label}</Text>
     </View>
   );
@@ -26,14 +46,12 @@ export function Badge({ label, tone = "gold" }: BadgeProps) {
 
 const styles = StyleSheet.create({
   badge: {
-    paddingVertical: spacing.xs,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
     paddingHorizontal: spacing.sm + 2,
     borderRadius: radius.pill,
     alignSelf: "flex-start",
   },
-  label: {
-    ...typography.micro,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
+  label: { ...typography.microBold },
 });

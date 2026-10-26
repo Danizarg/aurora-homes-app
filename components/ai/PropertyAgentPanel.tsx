@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, radius, spacing, typography } from "../../constants/theme";
 import { answerAgentQuestion } from "../../lib/ai/service";
 import type { FaqItem } from "../../types";
 
@@ -44,9 +44,12 @@ export function PropertyAgentPanel({ listingTitle, faq }: PropertyAgentPanelProp
     <View style={styles.wrap}>
       <View style={styles.header}>
         <View style={styles.headerIcon}>
-          <Ionicons name="sparkles" size={14} color={colors.gold} />
+          <Ionicons name="sparkles" size={16} color={colors.primaryDark} />
         </View>
-        <Text style={styles.headerText}>Property AI Assistant</Text>
+        <View>
+          <Text style={styles.headerText}>Property AI assistant</Text>
+          <Text style={styles.headerSub}>Answers from this listing's details · replies instantly</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.messages} nestedScrollEnabled>
@@ -57,25 +60,25 @@ export function PropertyAgentPanel({ listingTitle, faq }: PropertyAgentPanelProp
         ))}
       </ScrollView>
 
-      <View style={styles.suggestions}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestions} contentContainerStyle={{ gap: spacing.sm }}>
         {suggestedQuestions.map((q) => (
           <Pressable key={q} style={styles.suggestionChip} onPress={() => ask(q)}>
             <Text style={styles.suggestionText}>{q}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
-          placeholder="Ask about this property..."
-          placeholderTextColor={colors.muted}
+          placeholder="Ask about this property"
+          placeholderTextColor={colors.textSecondary}
           value={input}
           onChangeText={setInput}
           onSubmitEditing={() => ask(input)}
         />
-        <Pressable style={styles.sendButton} onPress={() => ask(input)}>
-          <Ionicons name="send" size={16} color={colors.white} />
+        <Pressable style={[styles.sendButton, !input.trim() && styles.sendButtonIdle]} onPress={() => ask(input)}>
+          <Ionicons name="arrow-up" size={18} color={colors.white} />
         </Pressable>
       </View>
     </View>
@@ -83,29 +86,30 @@ export function PropertyAgentPanel({ listingTitle, faq }: PropertyAgentPanelProp
 }
 
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: colors.ivoryDeep, borderRadius: radius.xl, padding: spacing.lg },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md, gap: spacing.sm },
+  wrap: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, backgroundColor: colors.white },
+  header: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md, gap: spacing.sm + 2 },
   headerIcon: {
-    width: 26, height: 26, borderRadius: radius.pill, backgroundColor: colors.white,
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryLight,
     alignItems: "center", justifyContent: "center",
   },
-  headerText: { ...typography.bodyMedium, color: colors.navy },
+  headerText: { ...typography.bodyBold, color: colors.text },
+  headerSub: { ...typography.micro, color: colors.textSecondary },
   messages: { maxHeight: 220, marginBottom: spacing.md },
-  bubble: { padding: spacing.sm + 2, borderRadius: radius.lg, marginBottom: spacing.sm, maxWidth: "85%", ...shadow.float },
-  bubbleAgent: { backgroundColor: colors.white, alignSelf: "flex-start" },
-  bubbleUser: { backgroundColor: colors.navy, alignSelf: "flex-end" },
-  bubbleTextAgent: { ...typography.small, color: colors.navy },
-  bubbleTextUser: { ...typography.small, color: colors.white },
-  suggestions: { flexDirection: "row", flexWrap: "wrap", marginBottom: spacing.sm },
+  bubble: { paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, borderRadius: radius.lg, marginBottom: spacing.sm, maxWidth: "85%" },
+  bubbleAgent: { backgroundColor: colors.bgSecondary, alignSelf: "flex-start", borderBottomLeftRadius: radius.xs },
+  bubbleUser: { backgroundColor: colors.text, alignSelf: "flex-end", borderBottomRightRadius: radius.xs },
+  bubbleTextAgent: { ...typography.small, lineHeight: 20, color: colors.text },
+  bubbleTextUser: { ...typography.small, lineHeight: 20, color: colors.white },
+  suggestions: { marginBottom: spacing.md, marginHorizontal: -spacing.md, paddingHorizontal: spacing.md },
   suggestionChip: {
-    backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: spacing.xs + 1, paddingHorizontal: spacing.sm + 2,
-    marginRight: spacing.xs, marginBottom: spacing.xs, ...shadow.float,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingVertical: spacing.sm, paddingHorizontal: spacing.md - 2,
   },
-  suggestionText: { ...typography.micro, color: colors.navy, textTransform: "none" },
-  inputRow: { flexDirection: "row", alignItems: "center" },
+  suggestionText: { ...typography.micro, fontWeight: "500", color: colors.text },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   input: {
-    flex: 1, backgroundColor: colors.white, borderRadius: radius.pill, paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2, marginRight: spacing.sm, color: colors.navy, ...shadow.float,
+    flex: 1, height: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill,
+    paddingHorizontal: spacing.md, color: colors.text, ...typography.small,
   },
-  sendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, padding: spacing.sm + 4, ...shadow.float },
+  sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  sendButtonIdle: { backgroundColor: colors.textTertiary },
 });

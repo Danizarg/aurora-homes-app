@@ -1,25 +1,64 @@
-import { useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, Dimensions } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
-import { Badge } from "../../components/ui/Badge";
-import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { SectionHeader } from "../../components/ui/SectionHeader";
+import { Divider } from "../../components/ui/Divider";
+import { Avatar } from "../../components/ui/Avatar";
+import { IconButton } from "../../components/ui/IconButton";
 import { PropertyAgentPanel } from "../../components/ai/PropertyAgentPanel";
 import { getListingById } from "../../lib/mock/listings";
 import { mockReviews } from "../../lib/mock/messages";
-import { toggleSavedListing } from "../../lib/mock/storage";
+import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
+import {
+  formatDate,
+  formatMoney,
+  formatRating,
+  isGuestFavourite,
+  isSale,
+  priceParts,
+  propertyTypeLabel,
+  reviewCountFor,
+  specsLine,
+} from "../../lib/listings/presentation";
+import type { Listing } from "../../types";
 
-const screenWidth = Dimensions.get("window").width;
+type Amenity = { icon: keyof typeof Ionicons.glyphMap; label: string };
+
+function amenitiesFor(listing: Listing): Amenity[] {
+  const list: Amenity[] = [
+    { icon: "bed-outline", label: `${listing.bedrooms} ${listing.bedrooms === 1 ? "bedroom" : "bedrooms"}` },
+    { icon: "water-outline", label: `${listing.bathrooms} ${listing.bathrooms === 1 ? "bathroom" : "bathrooms"}` },
+    { icon: "resize-outline", label: `${listing.size_m2} m² living space` },
+    { icon: "wifi-outline", label: "Wifi" },
+    { icon: "snow-outline", label: "Air conditioning" },
+  ];
+  if (listing.pool) list.push({ icon: "water", label: "Pool" });
+  if (listing.sea_view) list.push({ icon: "sunny-outline", label: "Sea view" });
+  if (listing.garage) list.push({ icon: "car-outline", label: "Free parking on premises" });
+  if (listing.pets_allowed) list.push({ icon: "paw-outline", label: "Pets allowed" });
+  if (listing.furnished) list.push({ icon: "cube-outline", label: "Fully furnished" });
+  list.push({ icon: "tv-outline", label: "TV" }, { icon: "restaurant-outline", label: "Kitchen" });
+  return list;
+}
 
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const listing = getListingById(id);
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [saved, setSaved] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [allAmenities, setAllAmenities] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (id) getSavedListingIds().then((ids) => setSaved(ids.includes(id)));
+    }, [id])
+  );
 
   if (!listing) {
     return (
@@ -29,218 +68,318 @@ export default function ListingDetailScreen() {
     );
   }
 
-  const isRental = listing.mode !== "buy";
+  const sale = isSale(listing);
   const reviews = mockReviews.filter((r) => r.listing_id === listing.id);
+  const rating = formatRating(listing);
+  const reviewCount = reviews.length || reviewCountFor(listing);
+  const favourite = isGuestFavourite(listing);
+  const amenities = amenitiesFor(listing);
+  const visibleAmenities = allAmenities ? amenities : amenities.slice(0, 6);
+  const { amount, unit } = priceParts(listing);
+  const galleryHeight = Math.round(width * 0.92);
+
+  async function toggleSave() {
+    const ids = await toggleSavedListing(listing!.id);
+    setSaved(ids.includes(listing!.id));
+  }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View>
+    <View style={styles.safe}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Gallery */}
+        <View style={{ height: galleryHeight }}>
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => setGalleryIndex(Math.round(e.nativeEvent.contentOffset.x / screenWidth))}
+            onMomentumScrollEnd={(e) => setGalleryIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
           >
             {listing.images.map((image) => (
-              <Image key={image.id} source={{ uri: image.uri }} style={{ width: screenWidth, height: 380 }} />
+              <Image key={image.id} source={{ uri: image.uri }} style={{ width, height: galleryHeight }} />
             ))}
           </ScrollView>
-          <View style={styles.galleryScrim} />
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={20} color={colors.navy} />
-          </Pressable>
+          <View style={[styles.galleryControls, { top: insets.top + spacing.sm }]}>
+            <IconButton icon="chevron-back" variant="overlay" onPress={() => router.back()} />
+            <View style={styles.galleryRight}>
+              <IconButton icon="share-outline" variant="overlay" />
+              <IconButton icon={saved ? "heart" : "heart-outline"} variant="overlay" color={saved ? colors.primary : colors.text} onPress={toggleSave} />
+            </View>
+          </View>
           <View style={styles.galleryCounter}>
             <Text style={styles.galleryCounterText}>{galleryIndex + 1} / {listing.images.length}</Text>
-          </View>
-          <View style={styles.galleryDots}>
-            {listing.images.map((_, i) => (
-              <View key={i} style={[styles.dot, i === galleryIndex && styles.dotActive]} />
-            ))}
           </View>
         </View>
 
         <View style={styles.content}>
-          <Badge label={listing.mode.toUpperCase()} tone="navy" />
           <Text style={styles.title}>{listing.title}</Text>
-          <Text style={styles.location}>{listing.address_area}, {listing.city}, {listing.country}</Text>
-          <Text style={styles.price}>
-            {isRental ? `${listing.price_monthly?.toLocaleString("en-GB")} €/month` : `${listing.price_sale?.toLocaleString("en-GB")} €`}
-          </Text>
+          <Text style={styles.subtitle}>{propertyTypeLabel[listing.property_type]} in {listing.address_area}, {listing.city}, {listing.country}</Text>
+          <Text style={styles.specs}>{specsLine(listing)}</Text>
 
-          <View style={styles.trustRow}>
-            <View style={styles.trustChip}>
-              <Ionicons name={listing.verified_owner ? "checkmark-circle" : "close-circle-outline"} size={16} color={listing.verified_owner ? colors.success : colors.muted} />
-              <Text style={styles.trustChipText}>Owner {listing.verified_owner ? "verified" : "unverified"}</Text>
+          {favourite ? (
+            <View style={styles.favouriteCard}>
+              <View style={styles.favouriteCol}>
+                <Text style={styles.favouriteTitle}>Guest</Text>
+                <Text style={styles.favouriteTitle}>favourite</Text>
+              </View>
+              <View style={styles.favouriteDivider} />
+              <View style={styles.favouriteCol}>
+                <Text style={styles.favouriteBig}>{rating}</Text>
+                <View style={styles.stars}>
+                  {[0, 1, 2, 3, 4].map((i) => <Ionicons key={i} name="star" size={10} color={colors.text} />)}
+                </View>
+              </View>
+              <View style={styles.favouriteDivider} />
+              <View style={styles.favouriteCol}>
+                <Text style={styles.favouriteBig}>{reviewCount}</Text>
+                <Text style={styles.favouriteSmall}>Reviews</Text>
+              </View>
             </View>
-            <View style={styles.trustChip}>
-              <Ionicons name={listing.verified_property ? "checkmark-circle" : "close-circle-outline"} size={16} color={listing.verified_property ? colors.success : colors.muted} />
-              <Text style={styles.trustChipText}>Property {listing.verified_property ? "verified" : "unverified"}</Text>
-            </View>
-          </View>
-          {listing.last_verified_at ? (
-            <Text style={styles.verificationMeta}>Last checked {listing.last_verified_at}</Text>
-          ) : null}
-
-          {isRental ? (
-            <Card style={{ marginTop: spacing.lg }}>
-              <Text style={styles.priceModuleTitle}>Real price breakdown</Text>
-              <PriceRow label="Monthly rent" value={listing.price_monthly} />
-              <PriceRow label="Utilities" value={listing.utilities_monthly} />
-              <PriceRow label="Deposit" value={listing.deposit} />
-              <PriceRow label="Platform fee" value={undefined} display={`${listing.platform_fee_percent}%`} />
-              <View style={styles.priceDivider} />
-              <PriceRow label="Total due at move-in" value={listing.total_move_in_cost} emphasize />
-            </Card>
           ) : (
-            <Card style={{ marginTop: spacing.lg }}>
-              <Text style={styles.priceModuleTitle}>Purchase details</Text>
-              <PriceRow label="Asking price" value={listing.price_sale} emphasize />
-              <PriceRow label="Estimated purchase costs" value={undefined} display="10–13% (placeholder)" />
-              <Text style={styles.verificationMeta}>This is a direct-owner listing. Aurora Homes does not process payments or provide legal advice.</Text>
-            </Card>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={14} color={colors.text} />
+              <Text style={styles.ratingText}>{rating}</Text>
+              <Text style={styles.ratingDot}>·</Text>
+              <Text style={styles.ratingReviews}>{reviewCount} reviews</Text>
+            </View>
           )}
 
-          <SectionHeader title="Features" />
-          <View style={styles.featuresGrid}>
-            <Feature label={`${listing.bedrooms} bedrooms`} icon="bed-outline" />
-            <Feature label={`${listing.bathrooms} bathrooms`} icon="water-outline" />
-            <Feature label={`${listing.size_m2} m²`} icon="resize-outline" />
-            {listing.pool && <Feature label="Pool" icon="water" />}
-            {listing.sea_view && <Feature label="Sea view" icon="sunny-outline" />}
-            {listing.garage && <Feature label="Garage" icon="car-outline" />}
-            {listing.pets_allowed && <Feature label="Pets allowed" icon="paw-outline" />}
-            {listing.furnished && <Feature label="Furnished" icon="bed" />}
+          <Divider />
+
+          {/* Host */}
+          <View style={styles.hostRow}>
+            <Avatar name="Owner" size={44} />
+            <View style={{ flex: 1, marginLeft: spacing.md }}>
+              <Text style={styles.hostName}>Listed by the owner</Text>
+              <Text style={styles.hostMeta}>
+                {listing.verified_owner ? "Verified owner" : "Owner not yet verified"}
+                {listing.last_verified_at ? ` · Checked ${listing.last_verified_at}` : ""}
+              </Text>
+            </View>
+            {listing.verified_owner ? <Ionicons name="shield-checkmark" size={22} color={colors.primary} /> : null}
           </View>
 
-          <SectionHeader title="Description" />
-          <Text style={styles.description}>{listing.description}</Text>
+          <Divider />
 
+          {/* Highlights */}
+          <Highlight
+            icon={listing.verified_property ? "shield-checkmark-outline" : "shield-outline"}
+            title={listing.verified_property ? "Verified property" : "Verification pending"}
+            body={listing.verified_property ? "Ownership documents were checked by Aurora Homes." : "The owner has not completed property verification yet."}
+          />
+          <Highlight icon="chatbubbles-outline" title="Direct contact with the owner" body="No agency in between. Ask anything and request a viewing in the chat." />
           {listing.available_from ? (
-            <>
-              <SectionHeader title="Availability" />
-              <Text style={styles.description}>Available from {listing.available_from}{listing.minimum_stay ? ` · Minimum stay ${listing.minimum_stay}` : ""}</Text>
-            </>
+            <Highlight icon="calendar-outline" title={`Available from ${formatDate(listing.available_from)}`} body={listing.minimum_stay ? `Minimum stay ${listing.minimum_stay}${listing.maximum_stay ? `, up to ${listing.maximum_stay}` : ""}.` : "Move in as soon as you are ready."} />
+          ) : (
+            <Highlight icon="key-outline" title="Direct-owner sale" body="Aurora Homes does not process payments or give legal advice." />
+          )}
+
+          <Divider />
+
+          {/* Description */}
+          <Text style={styles.description} numberOfLines={descriptionExpanded ? undefined : 4}>{listing.description}</Text>
+          <Pressable onPress={() => setDescriptionExpanded((v) => !v)} style={styles.showMore}>
+            <Text style={styles.showMoreText}>{descriptionExpanded ? "Show less" : "Show more"}</Text>
+            <Ionicons name={descriptionExpanded ? "chevron-up" : "chevron-forward"} size={16} color={colors.text} />
+          </Pressable>
+
+          <Divider />
+
+          {/* Amenities */}
+          <Text style={styles.sectionTitle}>What this place offers</Text>
+          {visibleAmenities.map((a) => (
+            <View key={a.label} style={styles.amenityRow}>
+              <Ionicons name={a.icon} size={24} color={colors.text} />
+              <Text style={styles.amenityLabel}>{a.label}</Text>
+            </View>
+          ))}
+          {amenities.length > 6 ? (
+            <Button
+              label={allAmenities ? "Show fewer amenities" : `Show all ${amenities.length} amenities`}
+              variant="outline"
+              onPress={() => setAllAmenities((v) => !v)}
+              style={{ marginTop: spacing.md }}
+            />
           ) : null}
 
-          <View style={styles.actionsRow}>
-            <Button label="Request viewing" style={{ flex: 1 }} onPress={() => router.push("/(tabs)/messages")} />
-            <Button
-              label={saved ? "Saved" : "Save"}
-              variant="outline"
-              style={{ marginLeft: spacing.sm }}
-              onPress={async () => {
-                await toggleSavedListing(listing.id);
-                setSaved((s) => !s);
-              }}
-            />
-          </View>
-          <Button label="Contact owner" variant="secondary" style={{ marginTop: spacing.sm }} onPress={() => router.push("/(tabs)/messages")} />
+          <Divider />
 
-          <SectionHeader title="Frequently asked questions" />
-          {listing.faq.map((item) => (
-            <Card key={item.question} style={{ marginBottom: spacing.sm }}>
+          {/* Price details */}
+          <Text style={styles.sectionTitle}>Price details</Text>
+          {sale ? (
+            <>
+              <PriceRow label="Asking price" value={formatMoney(listing.price_sale ?? 0)} />
+              <PriceRow label="Estimated purchase costs" value="10–13%" />
+              <PriceRow label="Aurora Homes fee" value={`${listing.platform_fee_percent}%`} />
+              <View style={styles.priceTotalDivider} />
+              <PriceRow label="Total (excl. purchase costs)" value={formatMoney(listing.price_sale ?? 0)} emphasize />
+            </>
+          ) : (
+            <>
+              <PriceRow label="Monthly rent" value={formatMoney(listing.price_monthly ?? 0)} />
+              <PriceRow label="Utilities (est.)" value={listing.utilities_monthly != null ? formatMoney(listing.utilities_monthly) : "—"} />
+              <PriceRow label="Deposit" value={listing.deposit != null ? formatMoney(listing.deposit) : "—"} />
+              <PriceRow label="Aurora Homes fee" value={`${listing.platform_fee_percent}%`} />
+              <View style={styles.priceTotalDivider} />
+              <PriceRow label="Total due at move-in" value={listing.total_move_in_cost != null ? formatMoney(listing.total_move_in_cost) : "—"} emphasize />
+            </>
+          )}
+
+          <Divider />
+
+          {/* Reviews */}
+          <View style={styles.reviewsHeader}>
+            <Ionicons name="star" size={18} color={colors.text} />
+            <Text style={styles.sectionTitle}>{rating} · {reviewCount} reviews</Text>
+          </View>
+          {reviews.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll} contentContainerStyle={{ paddingRight: spacing.lg }}>
+              {reviews.map((r) => (
+                <View key={r.id} style={styles.reviewCard}>
+                  <View style={styles.stars}>
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Ionicons key={i} name="star" size={11} color={i < r.rating ? colors.text : colors.border} />
+                    ))}
+                    <Text style={styles.reviewDate}> · {new Date(r.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</Text>
+                  </View>
+                  <Text style={styles.reviewText} numberOfLines={4}>{r.text}</Text>
+                  <View style={styles.reviewAuthor}>
+                    <Avatar name={r.author_name} size={36} />
+                    <Text style={styles.reviewAuthorName}>{r.author_name}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.muted}>Reviews from verified viewings will appear here.</Text>
+          )}
+
+          <Divider />
+
+          {/* FAQ */}
+          <Text style={styles.sectionTitle}>Things to know</Text>
+          {listing.faq.map((item, i) => (
+            <View key={item.question} style={[styles.faqRow, i === listing.faq.length - 1 && { borderBottomWidth: 0 }]}>
               <Text style={styles.faqQ}>{item.question}</Text>
               <Text style={styles.faqA}>{item.answer}</Text>
-            </Card>
+            </View>
           ))}
 
-          <SectionHeader title="Ask the Property AI Agent" subtitle="Every Aurora Homes listing has its own assistant, trained on this property's data." />
+          <Divider />
+
+          <Text style={styles.sectionTitle}>Ask the property AI agent</Text>
+          <Text style={[styles.muted, { marginBottom: spacing.md }]}>Every Aurora Homes listing has its own assistant, trained on this property's details.</Text>
           <PropertyAgentPanel listingTitle={listing.title} faq={listing.faq} />
 
-          {reviews.length > 0 && (
-            <>
-              <SectionHeader title="Reviews" />
-              {reviews.map((r) => (
-                <Card key={r.id} style={{ marginBottom: spacing.sm }}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewAuthor}>{r.author_name}</Text>
-                    <Text style={styles.reviewRating}>{"★".repeat(r.rating)}</Text>
-                  </View>
-                  <Text style={styles.faqA}>{r.text}</Text>
-                </Card>
-              ))}
-            </>
-          )}
+          <Divider />
 
-          <SectionHeader title="Contract template" subtitle="A standard template is available as a starting point. Aurora Homes does not provide legal advice — please review with a professional before signing." />
-          <Card style={{ marginBottom: spacing.xl }}>
-            <Text style={styles.faqA}>Contract template placeholder — available once a viewing is confirmed.</Text>
-          </Card>
+          <Text style={styles.muted}>
+            A standard contract template becomes available once a viewing is confirmed. Aurora Homes does not provide legal advice — review it with a professional before signing.
+          </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
-  );
-}
 
-function PriceRow({ label, value, display, emphasize }: { label: string; value?: number; display?: string; emphasize?: boolean }) {
-  return (
-    <View style={styles.priceRow}>
-      <Text style={[styles.priceLabel, emphasize && styles.priceLabelEmphasize]}>{label}</Text>
-      <Text style={[styles.priceValue, emphasize && styles.priceValueEmphasize]}>
-        {display ?? (value != null ? `${value.toLocaleString("en-GB")} €` : "—")}
-      </Text>
+      {/* Sticky bottom bar */}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.barPrice}>
+            <Text style={styles.barPriceAmount}>{amount}</Text>
+            {unit ? <Text style={styles.barPriceUnit}> {unit}</Text> : null}
+          </Text>
+          <Text style={styles.barMeta}>{listing.available_from ? `Available ${formatDate(listing.available_from)}` : "Direct from the owner"}</Text>
+        </View>
+        <Button label={sale ? "Request viewing" : "Request viewing"} onPress={() => router.push("/(tabs)/messages")} style={{ minWidth: 150 }} />
+      </View>
     </View>
   );
 }
 
-function Feature({ label, icon }: { label: string; icon: keyof typeof Ionicons.glyphMap }) {
+function Highlight({ icon, title, body }: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }) {
   return (
-    <View style={styles.featureItem}>
-      <Ionicons name={icon} size={18} color={colors.gold} />
-      <Text style={styles.featureLabel}>{label}</Text>
+    <View style={styles.highlight}>
+      <Ionicons name={icon} size={24} color={colors.text} style={{ marginTop: 2 }} />
+      <View style={{ flex: 1, marginLeft: spacing.md }}>
+        <Text style={styles.highlightTitle}>{title}</Text>
+        <Text style={styles.highlightBody}>{body}</Text>
+      </View>
+    </View>
+  );
+}
+
+function PriceRow({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
+  return (
+    <View style={styles.priceRow}>
+      <Text style={[styles.priceLabel, emphasize && styles.priceEmphasis]}>{label}</Text>
+      <Text style={[styles.priceValue, emphasize && styles.priceEmphasis]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
-  notFound: { padding: spacing.lg, ...typography.body, color: colors.navy },
-  backButton: {
-    position: "absolute", top: spacing.md, left: spacing.md, backgroundColor: "rgba(255,255,255,0.94)",
-    borderRadius: radius.pill, padding: spacing.sm, ...shadow.float,
-  },
-  galleryScrim: {
-    position: "absolute", bottom: 0, left: 0, right: 0, height: 100,
-    backgroundColor: "rgba(27,36,48,0.3)",
-  },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  notFound: { padding: spacing.lg, ...typography.body, color: colors.text },
+  galleryControls: { position: "absolute", left: spacing.md, right: spacing.md, flexDirection: "row", justifyContent: "space-between" },
+  galleryRight: { flexDirection: "row", gap: spacing.sm + 2 },
   galleryCounter: {
     position: "absolute", bottom: spacing.md, right: spacing.md,
-    backgroundColor: "rgba(27,36,48,0.55)", borderRadius: radius.pill, paddingVertical: 3, paddingHorizontal: spacing.sm,
+    backgroundColor: colors.overlayPill, borderRadius: radius.xs, paddingVertical: 4, paddingHorizontal: spacing.sm + 2,
   },
-  galleryCounterText: { ...typography.micro, color: colors.white, textTransform: "none" },
-  galleryDots: { position: "absolute", bottom: spacing.sm, alignSelf: "center", flexDirection: "row" },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.6)", marginHorizontal: 3 },
-  dotActive: { backgroundColor: colors.white, width: 8, height: 8, borderRadius: 4 },
-  content: { padding: spacing.lg },
-  title: { ...typography.h1, color: colors.navy, marginTop: spacing.md },
-  location: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
-  price: { ...typography.h2, color: colors.navy, marginTop: spacing.sm },
-  trustRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.lg },
-  trustChip: {
-    flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.white,
-    borderRadius: radius.pill, paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.sm + 2, ...shadow.soft,
+  galleryCounterText: { ...typography.microBold, color: colors.white },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  title: { ...typography.h2, color: colors.text },
+  subtitle: { ...typography.body, color: colors.text, marginTop: spacing.sm },
+  specs: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  ratingRow: { flexDirection: "row", alignItems: "center", marginTop: spacing.md, gap: 4 },
+  ratingText: { ...typography.smallBold, color: colors.text },
+  ratingDot: { ...typography.small, color: colors.text },
+  ratingReviews: { ...typography.smallBold, color: colors.text, textDecorationLine: "underline" },
+  favouriteCard: {
+    flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingVertical: spacing.md, marginTop: spacing.lg,
   },
-  trustChipText: { ...typography.small, color: colors.navy, fontWeight: "600" },
-  verificationMeta: { ...typography.micro, color: colors.muted, marginTop: spacing.sm, textTransform: "none" },
-  priceModuleTitle: { ...typography.h3, color: colors.navy, marginBottom: spacing.sm },
-  priceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs },
-  priceLabel: { ...typography.small, color: colors.muted },
-  priceLabelEmphasize: { color: colors.navy, fontWeight: "700" },
-  priceValue: { ...typography.small, color: colors.navy },
-  priceValueEmphasize: { ...typography.bodyMedium, color: colors.gold },
-  priceDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
-  featuresGrid: { flexDirection: "row", flexWrap: "wrap" },
-  featureItem: {
-    flexDirection: "row", alignItems: "center", backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radius.pill, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, marginRight: spacing.sm, marginBottom: spacing.sm, gap: spacing.xs,
+  favouriteCol: { flex: 1, alignItems: "center", justifyContent: "center" },
+  favouriteDivider: { width: 1, height: 36, backgroundColor: colors.border },
+  favouriteTitle: { ...typography.h4, color: colors.text, lineHeight: 18 },
+  favouriteBig: { ...typography.h3, color: colors.text },
+  favouriteSmall: { ...typography.micro, color: colors.text, textDecorationLine: "underline", marginTop: 2 },
+  stars: { flexDirection: "row", alignItems: "center", gap: 1, marginTop: 2 },
+  hostRow: { flexDirection: "row", alignItems: "center" },
+  hostName: { ...typography.bodyBold, color: colors.text },
+  hostMeta: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  highlight: { flexDirection: "row", marginBottom: spacing.lg },
+  highlightTitle: { ...typography.bodyBold, color: colors.text },
+  highlightBody: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  description: { ...typography.body, color: colors.text },
+  showMore: { flexDirection: "row", alignItems: "center", marginTop: spacing.sm, gap: 2 },
+  showMoreText: { ...typography.bodyBold, color: colors.text, textDecorationLine: "underline" },
+  sectionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.md },
+  amenityRow: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.sm + 4, gap: spacing.md },
+  amenityLabel: { ...typography.body, color: colors.text },
+  priceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.sm },
+  priceLabel: { ...typography.body, color: colors.text },
+  priceValue: { ...typography.body, color: colors.text },
+  priceEmphasis: { fontWeight: "600" },
+  priceTotalDivider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.sm },
+  reviewsHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  reviewsScroll: { marginHorizontal: -spacing.lg, paddingLeft: spacing.lg },
+  reviewCard: {
+    width: 280, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.lg, marginRight: spacing.md,
   },
-  featureLabel: { ...typography.small, color: colors.navy },
-  description: { ...typography.body, color: colors.navy, lineHeight: 22 },
-  actionsRow: { flexDirection: "row", marginTop: spacing.lg },
-  faqQ: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs },
-  faqA: { ...typography.small, color: colors.muted },
-  reviewHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xs },
-  reviewAuthor: { ...typography.bodyMedium, color: colors.navy },
-  reviewRating: { color: colors.gold },
+  reviewDate: { ...typography.micro, color: colors.textSecondary },
+  reviewText: { ...typography.body, color: colors.text, marginTop: spacing.sm, minHeight: 72 },
+  reviewAuthor: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.md },
+  reviewAuthorName: { ...typography.smallBold, color: colors.text },
+  muted: { ...typography.small, color: colors.textSecondary },
+  faqRow: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  faqQ: { ...typography.bodyBold, color: colors.text },
+  faqA: { ...typography.small, color: colors.textSecondary, marginTop: spacing.xs },
+  bottomBar: {
+    position: "absolute", left: 0, right: 0, bottom: 0,
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md,
+    backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.divider, ...shadow.bar,
+  },
+  barPrice: {},
+  barPriceAmount: { ...typography.bodyBold, color: colors.text },
+  barPriceUnit: { ...typography.body, color: colors.text },
+  barMeta: { ...typography.small, color: colors.text, textDecorationLine: "underline", marginTop: 2 },
 });

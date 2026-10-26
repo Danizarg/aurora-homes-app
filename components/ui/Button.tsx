@@ -1,11 +1,23 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { brand, colors, layout, radius, spacing, typography } from "../../constants/theme";
+
+type Variant = "primary" | "dark" | "outline" | "ghost" | "link";
 
 interface ButtonProps {
   label: string;
   onPress?: () => void;
-  variant?: "primary" | "secondary" | "outline" | "ghost";
-  size?: "md" | "lg";
+  /**
+   * primary — brand gradient (Airbnb "Reserve" style)
+   * dark    — solid near-black (Airbnb "Show results" style)
+   * outline — 1px near-black border
+   * ghost   — transparent, text only
+   * link    — underlined text, inline sized
+   */
+  variant?: Variant;
+  size?: "sm" | "md" | "lg";
+  icon?: keyof typeof Ionicons.glyphMap;
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
@@ -16,67 +28,99 @@ export function Button({
   onPress,
   variant = "primary",
   size = "md",
+  icon,
   disabled,
   loading,
   style,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const textColor = textColors[variant];
+
+  const content = loading ? (
+    <ActivityIndicator color={textColor} />
+  ) : (
+    <View style={styles.inner}>
+      {icon ? <Ionicons name={icon} size={18} color={textColor} style={{ marginRight: spacing.sm }} /> : null}
+      <Text style={[styles.label, sizeText[size], { color: textColor }, variant === "link" && styles.linkLabel]}>
+        {label}
+      </Text>
+    </View>
+  );
+
+  if (variant === "link") {
+    return (
+      <Pressable onPress={onPress} disabled={isDisabled} hitSlop={6} style={({ pressed }) => [pressed && styles.pressed, style]}>
+        {content}
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        size === "lg" && styles.lg,
+        sizeStyles[size],
         variantStyles[variant],
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={variant === "primary" ? colors.white : colors.navy} />
-      ) : (
-        <Text style={[styles.label, textVariantStyles[variant]]}>{label}</Text>
-      )}
+      {variant === "primary" ? (
+        <LinearGradient
+          colors={[...brand.gradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      {content}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: spacing.md - 2,
+    height: layout.buttonHeight,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
+    overflow: "hidden",
   },
-  lg: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  label: {
-    ...typography.bodyMedium,
-  },
+  inner: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
+  disabled: { opacity: 0.4 },
+  label: { ...typography.bodyBold },
+  linkLabel: { textDecorationLine: "underline" },
 });
 
-const variantStyles: Record<string, ViewStyle> = {
-  primary: { backgroundColor: colors.navy },
-  secondary: { backgroundColor: colors.gold },
-  outline: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.navy },
-  ghost: { backgroundColor: "transparent" },
+const sizeStyles: Record<NonNullable<ButtonProps["size"]>, ViewStyle> = {
+  sm: { height: 36, paddingHorizontal: spacing.md },
+  md: { height: layout.buttonHeight },
+  lg: { height: 56, paddingHorizontal: spacing.xl },
 };
 
-const textVariantStyles: Record<string, { color: string }> = {
-  primary: { color: colors.white },
-  secondary: { color: colors.navy },
-  outline: { color: colors.navy },
-  ghost: { color: colors.navy },
+const sizeText: Record<NonNullable<ButtonProps["size"]>, { fontSize: number }> = {
+  sm: { fontSize: 14 },
+  md: { fontSize: 16 },
+  lg: { fontSize: 16 },
+};
+
+const variantStyles: Record<Variant, ViewStyle> = {
+  primary: { backgroundColor: colors.primary },
+  dark: { backgroundColor: colors.text },
+  outline: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  ghost: { backgroundColor: "transparent" },
+  link: {},
+};
+
+const textColors: Record<Variant, string> = {
+  primary: colors.white,
+  dark: colors.white,
+  outline: colors.text,
+  ghost: colors.text,
+  link: colors.text,
 };

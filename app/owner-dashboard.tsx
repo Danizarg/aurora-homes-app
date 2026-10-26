@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,14 +7,17 @@ import { colors, radius, spacing, typography } from "../constants/theme";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
-import { SectionHeader } from "../components/ui/SectionHeader";
-import { EmptyState } from "../components/ui/EmptyState";
+import { Divider } from "../components/ui/Divider";
+import { ScreenHeader } from "../components/ui/ScreenHeader";
+import { Avatar } from "../components/ui/Avatar";
 import { getStoredListings } from "../lib/mock/storage";
 import { mockViewingRequests } from "../lib/mock/messages";
 import { getCurrentUserId } from "../lib/auth/service";
 import { fetchMyListings } from "../lib/supabase/listings";
+import { priceLine } from "../lib/listings/presentation";
 import type { Listing } from "../types";
 
+/** Airbnb Host "Listings" page: large title, dark "Add listing" button, thumbnail rows, hairline sections. */
 export default function OwnerDashboardScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
 
@@ -34,56 +37,55 @@ export default function OwnerDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: spacing.md }}>
-          <Ionicons name="chevron-back" size={22} color={colors.navy} />
-        </Pressable>
-        <SectionHeader eyebrow="Owner dashboard" title="Manage your listings" />
+      <ScreenHeader leading="back" border={false} right={<Button label="Add listing" variant="dark" size="sm" onPress={() => router.push("/create-listing")} />} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Your listings</Text>
 
-        <Button label="Add new listing" onPress={() => router.push("/(tabs)/ai")} style={{ marginBottom: spacing.xl }} />
-
-        <SectionHeader title={`Published listings (${published.length})`} />
+        <Text style={styles.sectionTitle}>Published ({published.length})</Text>
         {published.length === 0 ? (
-          <EmptyState icon="albums-outline" title="No published listings yet" />
+          <Text style={styles.muted}>No published listings yet. Upload photos and let Aurora build your first one.</Text>
         ) : (
-          published.map((l) => (
-            <Card key={l.id} style={{ marginBottom: spacing.sm }}>
-              <Text style={styles.listingTitle}>{l.title}</Text>
-              <Text style={styles.listingMeta}>{l.city} · {l.bedrooms} bd · {l.price_monthly ? `${l.price_monthly} €/mo` : `${l.price_sale} €`}</Text>
-            </Card>
-          ))
+          published.map((l) => <ListingRow key={l.id} listing={l} />)
         )}
 
-        <SectionHeader title={`Draft listings (${drafts.length})`} />
-        {drafts.length === 0 ? (
-          <EmptyState icon="document-outline" title="No drafts" />
-        ) : (
-          drafts.map((l) => (
-            <Card key={l.id} style={{ marginBottom: spacing.sm }}>
-              <Text style={styles.listingTitle}>{l.title}</Text>
-            </Card>
-          ))
-        )}
+        <Divider />
 
-        <SectionHeader title="Viewing requests" />
-        {mockViewingRequests.map((v) => (
-          <Card key={v.id} style={{ marginBottom: spacing.sm }}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.listingTitle}>{v.listing_title}</Text>
-              <Badge label={v.status} tone={v.status === "confirmed" ? "success" : "gold"} />
+        <Text style={styles.sectionTitle}>Drafts ({drafts.length})</Text>
+        {drafts.length === 0 ? <Text style={styles.muted}>No drafts.</Text> : drafts.map((l) => <ListingRow key={l.id} listing={l} />)}
+
+        <Divider />
+
+        <Text style={styles.sectionTitle}>Viewing requests</Text>
+        {mockViewingRequests.map((v, i) => (
+          <View key={v.id} style={[styles.requestRow, i === mockViewingRequests.length - 1 && { borderBottomWidth: 0 }]}>
+            <Avatar name={v.requester_name} size={44} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.requestName}>{v.requester_name}</Text>
+              <Text style={styles.requestMeta}>{v.listing_title} · {v.requested_date}</Text>
             </View>
-            <Text style={styles.listingMeta}>{v.requester_name} · requested {v.requested_date}</Text>
-          </Card>
+            <Badge label={v.status === "confirmed" ? "Confirmed" : v.status === "pending" ? "Pending" : "Declined"} tone={v.status === "confirmed" ? "success" : "muted"} />
+          </View>
         ))}
 
-        <SectionHeader title="AI agent activity" subtitle="Questions your property AI assistants have answered on your behalf." />
-        <Card style={{ marginBottom: spacing.sm }}>
-          <Text style={styles.listingMeta}>18 questions answered this month across your listings, including availability, pets, and pricing.</Text>
-        </Card>
+        <Divider />
 
-        <SectionHeader title="Verification tasks" />
-        <Card style={{ marginBottom: spacing.xl }}>
-          <Text style={styles.listingMeta}>Upload proof of ownership or listing authorization to unlock the "Verified" badge and appear higher in search.</Text>
+        <Text style={styles.sectionTitle}>AI agent activity</Text>
+        <View style={styles.statsRow}>
+          <Stat value="18" label="Questions answered" />
+          <Stat value="3" label="Qualified leads" />
+          <Stat value="2" label="Viewings requested" />
+        </View>
+
+        <Divider />
+
+        <Card>
+          <View style={styles.verifyRow}>
+            <Ionicons name="shield-checkmark-outline" size={26} color={colors.text} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.verifyTitle}>Get the Verified badge</Text>
+              <Text style={styles.muted}>Upload proof of ownership or listing authorization to appear higher in search.</Text>
+            </View>
+          </View>
           <Button label="Start verification" variant="outline" style={{ marginTop: spacing.md }} onPress={() => router.push("/trust")} />
         </Card>
       </ScrollView>
@@ -91,10 +93,45 @@ export default function OwnerDashboardScreen() {
   );
 }
 
+function ListingRow({ listing }: { listing: Listing }) {
+  return (
+    <Pressable style={styles.listingRow} onPress={() => router.push(`/listing/${listing.id}`)}>
+      <Image source={{ uri: listing.images[0]?.uri }} style={styles.thumb} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+        <Text style={styles.listingMeta}>{listing.city} · {listing.bedrooms} bd · {priceLine(listing)}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.text} />
+    </Pressable>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  listingTitle: { ...typography.bodyMedium, color: colors.navy },
-  listingMeta: { ...typography.small, color: colors.muted, marginTop: spacing.xs },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  title: { ...typography.display, color: colors.text, marginBottom: spacing.xl },
+  sectionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.md },
+  muted: { ...typography.small, color: colors.textSecondary },
+  listingRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 2 },
+  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.bgSecondary },
+  listingTitle: { ...typography.bodyMedium, color: colors.text },
+  listingMeta: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  requestRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  requestName: { ...typography.bodyMedium, color: colors.text },
+  requestMeta: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
+  statsRow: { flexDirection: "row", gap: spacing.sm + 2 },
+  stat: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
+  statValue: { ...typography.h2, color: colors.text },
+  statLabel: { ...typography.micro, color: colors.textSecondary, marginTop: spacing.xs },
+  verifyRow: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
+  verifyTitle: { ...typography.bodyBold, color: colors.text, marginBottom: 2 },
 });

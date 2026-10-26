@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
+import { TextField } from "../../components/ui/TextField";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { signUp } from "../../lib/auth/service";
 
 export default function SignupScreen() {
@@ -27,39 +29,32 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>List a property or save your favourite homes.</Text>
-
-        <Text style={styles.label}>Full name</Text>
-        <TextInput style={styles.input} value={fullName} onChangeText={setFullName} placeholder="Jane Owner" placeholderTextColor={colors.muted} />
-        <Text style={styles.label}>Email</Text>
-        <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.muted} />
-        <Text style={styles.label}>Password</Text>
-        <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" placeholderTextColor={colors.muted} />
+      <ScreenHeader title="Finish signing up" leading="back" />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <TextField label="Full name" value={fullName} onChangeText={setFullName} placeholder="Jane Owner" helper="Make sure this matches the name on your ID." />
+        <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" helper="We'll email you listing enquiries and viewing confirmations." />
+        <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 8 characters" />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Button label="Sign up" loading={loading} onPress={handleSignup} style={{ marginTop: spacing.lg }} />
+        <Text style={styles.terms}>
+          By selecting Agree and continue, I agree to Aurora Homes' Terms of Service and acknowledge the Privacy Policy.
+        </Text>
 
-        <Pressable onPress={() => router.replace("/auth/login")} style={{ marginTop: spacing.md }}>
+        <Button label="Agree and continue" loading={loading} onPress={handleSignup} style={{ marginTop: spacing.md }} />
+
+        <Pressable onPress={() => router.replace("/auth/login")} style={{ marginTop: spacing.lg, alignSelf: "center" }}>
           <Text style={styles.link}>Already have an account? Log in</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ivory },
-  content: { padding: spacing.lg, paddingTop: spacing.xl },
-  title: { ...typography.display, color: colors.navy },
-  subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xl },
-  label: { ...typography.bodyMedium, color: colors.navy, marginBottom: spacing.xs, marginTop: spacing.md },
-  input: {
-    backgroundColor: colors.white, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.navy, ...typography.body,
-  },
-  error: { ...typography.small, color: colors.error, marginTop: spacing.sm },
-  link: { ...typography.small, color: colors.gold, fontWeight: "600", textAlign: "center" },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  error: { ...typography.small, color: colors.error, marginBottom: spacing.sm },
+  terms: { ...typography.micro, lineHeight: 18, color: colors.textSecondary, marginTop: spacing.sm },
+  link: { ...typography.smallBold, color: colors.text, textDecorationLine: "underline" },
 });

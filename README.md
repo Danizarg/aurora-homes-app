@@ -27,34 +27,54 @@ below).
 
 ```
 app/                    Expo Router screens (file-based routing)
-  (tabs)/                Bottom tab screens: Home, Search, AI, Messages, Profile
+  (tabs)/                Bottom tabs: Explore, Wishlists, Aurora AI, Messages, Profile
+  search-modal.tsx        "Where to?" search sheet (destination, type, budget)
+  wishlists/saved.tsx     Saved homes list
   listing/[id].tsx        Listing detail + AI property agent
   create-listing/          AI Listing Builder (photos → address → price → AI chat → publish)
   messages/[id].tsx        Conversation detail
   auth/                    Login, signup, forgot password
   legal/                   Terms, privacy, disclaimer
 components/
-  ui/                      Buttons, cards, chips, badges, empty states
-  listings/                ListingCard
+  ui/                      Buttons, cards, chips, badges, text fields, headers, dividers
+  search/                  SearchPill, CategoryTabs, FiltersSheet
+  listings/                ListingCard (feed) + CompactListingCard (carousels)
+  host/                    HostLanding (Rent out / Sell landing pages)
   ai/                      PropertyAgentPanel (per-listing AI chat)
 lib/
   supabase/                Supabase client + SQL schema
   ai/                      AI service abstraction (mock + real-key ready)
   mock/                    Mock listings, messages, AsyncStorage-backed storage
+  listings/                Presentation helpers (price, rating, headline) + filtering
   auth/                    Auth abstraction (Supabase or mock session)
 types/                    Shared TypeScript domain types
-constants/theme.ts        Design system (colors, spacing, type scale)
+constants/theme.ts        Design system (brand colour, neutrals, spacing, type scale)
 supabase/schema.sql        Postgres schema + RLS policies
 ```
 
+## Design system
+
+The UI follows the Airbnb mobile app's layout and visual language (white
+canvas, near-black text, hairline dividers, 8/12px radii, pill search bar,
+category tabs, square photo cards with hearts and "Guest favourite" badges,
+sticky price/CTA bars, gradient primary button) with Aurora's own branding.
+
+Everything brand-specific lives in `constants/theme.ts` under `brand`:
+change `brand.primary`, `brand.primaryDark`, `brand.primaryLight` and
+`brand.gradient` to re-skin the accent colour across the whole app.
+
 ## Screens built
 
-Home (discovery-first hero, search bar, visual carousel, quick paths, AI
-explainer, owner CTA), Search (Rent/Buy/Stay/Live modes + filters), Listing
-detail with AI agent chat, AI tab hub, AI Listing Builder (photos → address →
-price → AI chat → generation → review → preview → publish), Rent Out, Sell,
-Messages inbox + conversation, Profile, Owner dashboard, Login/Signup/Forgot
-password, Contact, Trust & verification, Pricing, Terms/Privacy/Disclaimer.
+Explore (search pill, Homes/Stay/Rent/Buy/Live category tabs, per-city
+carousels, results mode with filters), "Where to?" search sheet, Filters sheet
+(property type tiles, price presets, room steppers, amenities, trust toggles,
+sort), Wishlists + saved homes, Listing detail (photo gallery, guest-favourite
+card, host row, highlights, amenities, price details, reviews, FAQ, AI agent,
+sticky request bar), Aurora AI hub, AI Listing Builder (host-setup style:
+photos → address → price → AI chat → generation → review → preview →
+publish), Rent Out, Sell, Messages inbox + conversation, Profile, Owner
+dashboard, Login/Signup/Forgot password, Contact, Trust & verification,
+Pricing, Terms/Privacy/Disclaimer.
 
 ## The AI Listing Builder
 

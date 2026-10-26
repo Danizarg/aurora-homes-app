@@ -1,31 +1,43 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "../../constants/theme";
 
 interface SectionHeaderProps {
-  eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** Renders a trailing chevron and makes the header pressable (Airbnb "Popular homes in Marbella ›"). */
+  onPress?: () => void;
+  /** Optional right-aligned action label, e.g. "Show all". */
+  actionLabel?: string;
+  onAction?: () => void;
+  size?: "md" | "lg";
 }
 
-export function SectionHeader({ eyebrow, title, subtitle }: SectionHeaderProps) {
+export function SectionHeader({ title, subtitle, onPress, actionLabel, onAction, size = "md" }: SectionHeaderProps) {
+  const titleStyle = size === "lg" ? typography.h2 : typography.h3;
+  const Wrapper = onPress ? Pressable : View;
   return (
     <View style={styles.wrap}>
-      {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Wrapper onPress={onPress} style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <Text style={[titleStyle, styles.title]}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+        {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.text} /> : null}
+        {actionLabel ? (
+          <Pressable onPress={onAction} hitSlop={6}>
+            <Text style={styles.action}>{actionLabel}</Text>
+          </Pressable>
+        ) : null}
+      </Wrapper>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
-  eyebrow: {
-    ...typography.micro,
-    color: colors.gold,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: spacing.xs,
-  },
-  title: { ...typography.h2, color: colors.navy },
-  subtitle: { ...typography.body, color: colors.muted, marginTop: spacing.xs },
+  row: { flexDirection: "row", alignItems: "center" },
+  title: { color: colors.text },
+  subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
+  action: { ...typography.smallBold, color: colors.text, textDecorationLine: "underline" },
 });
