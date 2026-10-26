@@ -43,7 +43,7 @@ export default function LoginScreen() {
             <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" placeholderTextColor={colors.textTertiary} />
           </View>
         </View>
-        <Text style={styles.hint}>We'll never share your email. Owners log in to manage listings and messages.</Text>
+        <Text style={styles.hint}>We’ll never share your email. Owners log in to manage listings and messages.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Button label="Continue" loading={loading} onPress={handleLogin} style={{ marginTop: spacing.lg }} />

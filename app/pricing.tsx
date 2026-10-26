@@ -5,33 +5,51 @@ import { Card } from "../components/ui/Card";
 import { Divider } from "../components/ui/Divider";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
 
+/**
+ * Pricing, as decided 2026-10-08: tenants and buyers pay nothing; owners
+ * pay a flat €20/month while a listing is live; Zouza takes no transaction
+ * fees of any kind. Mirrors /pricing on zouza.ai — keep the two in step.
+ */
 export default function PricingScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader leading="back" border={false} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Transparent, low-fee by design</Text>
-        <Text style={styles.subtitle}>Aurora Homes is built around a lower platform fee than traditional agencies, with every cost shown upfront.</Text>
+        <Text style={styles.title}>No fees. One subscription.</Text>
+        <Text style={styles.subtitle}>Searching, browsing, talking to Suzi and enquiring are free. Owners pay a flat €20 a month while a listing is live.</Text>
 
-        <Text style={styles.sectionTitle}>Price details</Text>
-        <Text style={styles.sectionBody}>Example: a €1,200 rental at move-in</Text>
-        <PriceRow label="Monthly rent" value="€1,200" />
-        <PriceRow label="Utilities (est.)" value="€150" />
-        <PriceRow label="Deposit" value="€1,200" />
-        <PriceRow label="Aurora Homes fee" value="0–3%" />
-        <View style={styles.totalDivider} />
-        <PriceRow label="Total due at move-in" value="€2,550" emphasize />
+        <View style={styles.plans}>
+          <Card>
+            <Text style={styles.planWho}>Tenants and buyers</Text>
+            <Text style={styles.planPrice}>Free</Text>
+            <Text style={styles.planBody}>Search, save homes, ask Suzi anything, message owners and request viewings. Nothing is added to the rent or the price, at any point.</Text>
+          </Card>
+          <Card>
+            <Text style={styles.planWho}>Owners</Text>
+            <Text style={styles.planPrice}>
+              €20 <Text style={styles.planUnit}>/ month</Text>
+            </Text>
+            <Text style={styles.planBody}>Creating and previewing a listing is free. The subscription starts when you publish and keeps the listing live. Cancel any month, no contract.</Text>
+          </Card>
+        </View>
 
         <Divider />
 
-        <Text style={styles.sectionTitle}>No hidden costs</Text>
-        <Text style={styles.body}>Every fee is shown on the listing before you contact the owner or request a viewing. No surprise charges at signing.</Text>
+        <Text style={styles.sectionTitle}>Price details</Text>
+        <Text style={styles.sectionBody}>Example: what a tenant pays at move-in on a €1,200 rental</Text>
+        <PriceRow label="Monthly rent" value="€1,200" />
+        <PriceRow label="Utilities (est.)" value="€150" />
+        <PriceRow label="Deposit" value="€1,200" />
+        <PriceRow label="Zouza fee" value="€0" />
+        <View style={styles.totalDivider} />
+        <PriceRow label="Total due at move-in" value="€2,550" emphasize />
+        <Text style={[styles.sectionBody, { marginTop: spacing.sm }]}>Every euro goes to the owner or comes back to you as the deposit.</Text>
 
         <Divider />
 
         <Card variant="flat">
-          <Text style={styles.cardTitle}>Disclaimer</Text>
-          <Text style={styles.cardBody}>Exact fee structure will be announced before launch. Aurora Homes does not process payments, rent, or deposits in the MVP.</Text>
+          <Text style={styles.cardTitle}>What Zouza does not do</Text>
+          <Text style={styles.cardBody}>Zouza does not process payments, collect rent, hold deposits or give legal, tax or financial advice. Agreements are made directly between owner and tenant or buyer.</Text>
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -52,9 +70,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   title: { ...typography.display, color: colors.text },
   subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xl },
+  plans: { gap: spacing.md },
+  planWho: { ...typography.smallBold, color: colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.4 },
+  planPrice: { ...typography.display, color: colors.text, marginTop: spacing.sm },
+  planUnit: { ...typography.body, color: colors.textSecondary },
+  planBody: { ...typography.small, lineHeight: 20, color: colors.textSecondary, marginTop: spacing.sm },
   sectionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   sectionBody: { ...typography.small, color: colors.textSecondary, marginBottom: spacing.sm },
-  body: { ...typography.body, color: colors.text },
   priceRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.sm },
   priceText: { ...typography.body, color: colors.text },
   priceEmphasis: { fontWeight: "600" },

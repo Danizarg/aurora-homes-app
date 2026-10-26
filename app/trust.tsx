@@ -20,7 +20,7 @@ export default function TrustScreen() {
       <ScreenHeader leading="back" border={false} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>How verification works</Text>
-        <Text style={styles.subtitle}>Every verified home on Aurora Homes is checked against ownership documents and re-checked over time.</Text>
+        <Text style={styles.subtitle}>Every verified home on Zouza is checked against ownership documents and re-checked over time.</Text>
 
         {sections.map((s, i) => (
           <View key={s.title} style={[styles.row, i === sections.length - 1 && { borderBottomWidth: 0 }]}>
@@ -35,7 +35,7 @@ export default function TrustScreen() {
         <Card variant="flat" style={{ marginTop: spacing.lg }}>
           <Text style={styles.rowTitle}>No guarantee disclaimer</Text>
           <Text style={styles.rowBody}>
-            Verification improves confidence but is not a guarantee. Aurora Homes does not guarantee tenants, buyers,
+            Verification improves confidence but is not a guarantee. Zouza does not guarantee tenants, buyers,
             contracts, rent payments, or legal outcomes. Always exercise your own diligence before transacting.
           </Text>
         </Card>

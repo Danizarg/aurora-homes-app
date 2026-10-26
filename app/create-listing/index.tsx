@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -19,14 +19,15 @@ import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { TextField } from "../../components/ui/TextField";
 import { Divider } from "../../components/ui/Divider";
+import { ZMark } from "../../components/brand/ZMark";
 import {
   describeDetectedFeatures,
   detectFeaturesFromPhotos,
-  generateListingContent,
   type DetectedFeatures,
   type ListingDraftInput,
   type Positioning,
 } from "../../lib/ai/service";
+import { generateListing } from "../../lib/ai/suzi";
 import type { AiGeneratedContent, Listing } from "../../types";
 import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
@@ -43,7 +44,7 @@ const generationStages = [
   "Writing exposé",
   "Creating FAQ",
   "Preparing translations",
-  "Building property AI agent",
+  "Teaching Suzi this property",
   "Preparing listing preview",
 ];
 
@@ -133,7 +134,7 @@ export default function AiListingBuilder() {
   const [publishing, setPublishing] = useState(false);
   const [publishedToSupabase, setPublishedToSupabase] = useState(false);
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const { city, addressArea } = splitAddress(address);
 
@@ -169,7 +170,10 @@ export default function AiListingBuilder() {
         ...prev,
         { id: "done", from: "ai", text: "Done. I created a professional listing from your photos." },
       ]);
-      setTimeout(() => setStep("generating"), 900);
+      setTimeout(() => {
+        setStageIndex(0);
+        setStep("generating");
+      }, 900);
       return;
     }
     setMessages((prev) => [...prev, { id: `q-${index}`, from: "ai", text: questions[index].ai }]);
@@ -217,12 +221,14 @@ export default function AiListingBuilder() {
       priceSale: intent === "sell" ? price : undefined,
       utilitiesMonthly: intent === "rent_out" ? Math.round(price * 0.12) : undefined,
       deposit: intent === "rent_out" ? price : undefined,
+      photoCount: images.length,
     };
   }
 
+  // stageIndex is reset to 0 by whoever moves the wizard into "generating",
+  // so this effect only drives the stage ticker and the real generation.
   useEffect(() => {
     if (step !== "generating") return;
-    setStageIndex(0);
     const interval = setInterval(() => {
       setStageIndex((prev) => {
         if (prev >= generationStages.length - 1) {
@@ -232,7 +238,7 @@ export default function AiListingBuilder() {
         return prev + 1;
       });
     }, 550);
-    generateListingContent(draftInput()).then((content) => {
+    generateListing(draftInput()).then((content) => {
       setGenerated(content);
       setTimeout(() => setStep("review"), generationStages.length * 550 + 300);
     });
@@ -248,7 +254,7 @@ export default function AiListingBuilder() {
       owner_id: ownerId,
       mode: input.intent === "sell" ? "buy" : input.positioning === "rent_holiday" ? "stay" : "rent",
       intent: input.intent,
-      title: generated?.title ?? "New Aurora listing",
+      title: generated?.title ?? "New listing",
       description: generated?.long_description ?? "",
       city: input.city,
       country: "Spain",
@@ -261,7 +267,6 @@ export default function AiListingBuilder() {
       price_sale: input.priceSale,
       utilities_monthly: input.utilitiesMonthly,
       deposit: input.deposit,
-      platform_fee_percent: 2,
       total_move_in_cost:
         input.intent === "rent_out"
           ? (input.priceMonthly ?? 0) + (input.utilitiesMonthly ?? 0) + (input.deposit ?? 0)
@@ -287,7 +292,7 @@ export default function AiListingBuilder() {
     if (isSupabaseConfigured) {
       const ownerId = await getOrCreateSupabaseUserId();
       if (ownerId) {
-        const tempId = `${Date.now()}`;
+        const tempId = newId();
         const uploadedUrls = await uploadListingImages(ownerId, tempId, images);
         const draftListing = buildListing(tempId, ownerId, uploadedUrls);
         const supabaseId = await createListingInSupabase(draftListing, ownerId);
@@ -304,7 +309,7 @@ export default function AiListingBuilder() {
     // Falls back to local mock storage when Supabase isn't configured, or if
     // the Supabase write failed (e.g. anonymous sign-ins not enabled yet) —
     // keeps the flow fully demoable with no backend.
-    const id = `local-${Date.now()}`;
+    const id = newId("local-");
     const listing = buildListing(id, "me", images);
     await addStoredListing(listing);
     setPublishedId(id);
@@ -324,7 +329,7 @@ export default function AiListingBuilder() {
   const footer: Record<string, { label: string; disabled?: boolean; onPress: () => void }> = {
     photos: { label: "Next", disabled: images.length === 0, onPress: () => setStep("address") },
     address: { label: "Next", disabled: !address.trim(), onPress: () => setStep("price") },
-    price: { label: "Let Aurora take over", onPress: startChat },
+    price: { label: "Let Suzi take over", onPress: startChat },
     review: { label: "Next", onPress: () => setStep("preview") },
     preview: { label: "Publish listing", onPress: publish },
   };
@@ -338,7 +343,7 @@ export default function AiListingBuilder() {
         <Pressable onPress={() => (step === "photos" ? router.back() : goBack())} hitSlop={10} style={styles.headerBack}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>AI Listing Builder</Text>
+        <Text style={styles.headerTitle}>List with Suzi</Text>
         <Button label="Exit" variant="outline" size="sm" onPress={() => router.back()} />
       </View>
       <View style={styles.progressTrack}>
@@ -348,7 +353,7 @@ export default function AiListingBuilder() {
       {step === "photos" && (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.stepTitle}>Add some photos of your place</Text>
-          <Text style={styles.stepBody}>Aurora works best with 5–15 clear photos of the interior, exterior and key rooms. You can add more later.</Text>
+          <Text style={styles.stepBody}>Suzi works best with 5–15 clear photos of the interior, exterior and key rooms. You can add more later.</Text>
 
           {images.length === 0 ? (
             <Pressable style={styles.uploadDropzone} onPress={pickImages}>
@@ -378,8 +383,8 @@ export default function AiListingBuilder() {
 
       {step === "address" && (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.stepTitle}>Where's your place located?</Text>
-          <Text style={styles.stepBody}>Just the area or city — Aurora will handle the rest. The exact address is only shared after a viewing is confirmed.</Text>
+          <Text style={styles.stepTitle}>Where’s your place located?</Text>
+          <Text style={styles.stepBody}>Just the area or city — Suzi will handle the rest. The exact address is only shared after a viewing is confirmed.</Text>
           <TextField label="Area, City" value={address} onChangeText={setAddress} placeholder="e.g. Golden Mile, Marbella" autoFocus />
         </ScrollView>
       )}
@@ -387,7 +392,7 @@ export default function AiListingBuilder() {
       {step === "price" && (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.stepTitle}>Now, set your price</Text>
-          <Text style={styles.stepBody}>You can leave this blank and set it later — Aurora will still build the full listing.</Text>
+          <Text style={styles.stepBody}>You can leave this blank and set it later — Suzi will still write the full listing.</Text>
           <View style={styles.priceEntry}>
             <Text style={styles.priceCurrency}>€</Text>
             <TextInput
@@ -400,7 +405,7 @@ export default function AiListingBuilder() {
               autoFocus
             />
           </View>
-          <Text style={styles.priceHint}>Per month for rentals, total for sales. Aurora adds utilities and deposit estimates for you.</Text>
+          <Text style={styles.priceHint}>Per month for rentals, total for sales. Suzi adds utilities and deposit estimates for you. Publishing costs €20/month while the listing is live, with no commission.</Text>
         </ScrollView>
       )}
 
@@ -415,8 +420,8 @@ export default function AiListingBuilder() {
               <View key={m.id} style={[styles.bubble, m.from === "ai" ? styles.bubbleAi : styles.bubbleUser]}>
                 {m.from === "ai" ? (
                   <View style={styles.aiLabelRow}>
-                    <Ionicons name="sparkles" size={11} color={colors.primaryDark} />
-                    <Text style={styles.aiLabel}>Aurora AI</Text>
+                    <ZMark size={10} color={colors.primaryDark} />
+                    <Text style={styles.aiLabel}>Suzi</Text>
                   </View>
                 ) : null}
                 <Text style={m.from === "ai" ? styles.bubbleTextAi : styles.bubbleTextUser}>{m.text}</Text>
@@ -458,9 +463,9 @@ export default function AiListingBuilder() {
       {step === "generating" && (
         <View style={styles.centered}>
           <View style={styles.generatingIcon}>
-            <Ionicons name="sparkles" size={32} color={colors.primaryDark} />
+            <ZMark size={32} color={colors.primaryDark} />
           </View>
-          <Text style={styles.centeredTitle}>Aurora is building your listing</Text>
+          <Text style={styles.centeredTitle}>Suzi is writing your listing</Text>
           <View style={{ alignSelf: "stretch", marginTop: spacing.lg }}>
             {generationStages.map((stage, i) => (
               <View key={stage} style={styles.stageRow}>
@@ -479,7 +484,7 @@ export default function AiListingBuilder() {
       {step === "review" && generated && (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.stepTitle}>Review your listing</Text>
-          <Text style={styles.stepBody}>Everything below was written by Aurora. Edit anything before publishing.</Text>
+          <Text style={styles.stepBody}>Everything below was written by Suzi. Edit anything before publishing.</Text>
 
           <TextField label="Title" value={generated.title} onChangeText={(v) => setGenerated({ ...generated, title: v })} />
           <TextField label="Short summary" value={generated.short_summary} onChangeText={(v) => setGenerated({ ...generated, short_summary: v })} multiline />
@@ -523,10 +528,10 @@ export default function AiListingBuilder() {
 
           <Divider gap={spacing.md} />
 
-          <Text style={styles.reviewSection}>Property AI agent knowledge base</Text>
+          <Text style={styles.reviewSection}>What Suzi knows about this property</Text>
           {generated.agent_knowledge_base.map((k) => (
             <View key={k} style={styles.bulletRow}>
-              <Ionicons name="sparkles-outline" size={16} color={colors.text} />
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.text} />
               <Text style={styles.bulletText}>{k}</Text>
             </View>
           ))}
@@ -544,7 +549,7 @@ export default function AiListingBuilder() {
 
       {step === "preview" && generated && (
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.stepTitle}>Here's how it will look</Text>
+          <Text style={styles.stepTitle}>Here’s how it will look</Text>
           <Text style={styles.stepBody}>This is the card renters and buyers will see in search.</Text>
           <View style={styles.previewCard}>
             {images.length > 0 ? <Image source={{ uri: images[0] }} style={styles.previewImage} /> : <View style={[styles.previewImage, { backgroundColor: colors.bgSecondary }]} />}
@@ -594,6 +599,11 @@ export default function AiListingBuilder() {
       ) : null}
     </SafeAreaView>
   );
+}
+
+/** Fresh ids for listings and uploads; kept outside the component so the render stays pure. */
+function newId(prefix = "") {
+  return `${prefix}${Date.now()}`;
 }
 
 function splitAddress(address: string): { city: string; addressArea: string } {

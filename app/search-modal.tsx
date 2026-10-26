@@ -126,7 +126,7 @@ export default function SearchModal() {
         {/* Price */}
         {panel === "price" ? (
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>What's your budget?</Text>
+            <Text style={styles.panelTitle}>What’s your budget?</Text>
             <View style={styles.chipRow}>
               {pricePresets(mode).map((p) => (
                 <Chip key={p.label} label={p.label} active={priceMax === p.value} onPress={() => setPriceMax(p.value)} />

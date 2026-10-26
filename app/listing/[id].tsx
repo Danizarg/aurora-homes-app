@@ -164,13 +164,13 @@ export default function ListingDetailScreen() {
           <Highlight
             icon={listing.verified_property ? "shield-checkmark-outline" : "shield-outline"}
             title={listing.verified_property ? "Verified property" : "Verification pending"}
-            body={listing.verified_property ? "Ownership documents were checked by Aurora Homes." : "The owner has not completed property verification yet."}
+            body={listing.verified_property ? "Ownership documents were checked by Zouza." : "The owner has not completed property verification yet."}
           />
           <Highlight icon="chatbubbles-outline" title="Direct contact with the owner" body="No agency in between. Ask anything and request a viewing in the chat." />
           {listing.available_from ? (
             <Highlight icon="calendar-outline" title={`Available from ${formatDate(listing.available_from)}`} body={listing.minimum_stay ? `Minimum stay ${listing.minimum_stay}${listing.maximum_stay ? `, up to ${listing.maximum_stay}` : ""}.` : "Move in as soon as you are ready."} />
           ) : (
-            <Highlight icon="key-outline" title="Direct-owner sale" body="Aurora Homes does not process payments or give legal advice." />
+            <Highlight icon="key-outline" title="Direct-owner sale" body="Zouza does not process payments or give legal, tax or financial advice." />
           )}
 
           <Divider />
@@ -209,7 +209,7 @@ export default function ListingDetailScreen() {
             <>
               <PriceRow label="Asking price" value={formatMoney(listing.price_sale ?? 0)} />
               <PriceRow label="Estimated purchase costs" value="10–13%" />
-              <PriceRow label="Aurora Homes fee" value={`${listing.platform_fee_percent}%`} />
+              <PriceRow label="Zouza fee" value="€0" />
               <View style={styles.priceTotalDivider} />
               <PriceRow label="Total (excl. purchase costs)" value={formatMoney(listing.price_sale ?? 0)} emphasize />
             </>
@@ -218,9 +218,10 @@ export default function ListingDetailScreen() {
               <PriceRow label="Monthly rent" value={formatMoney(listing.price_monthly ?? 0)} />
               <PriceRow label="Utilities (est.)" value={listing.utilities_monthly != null ? formatMoney(listing.utilities_monthly) : "—"} />
               <PriceRow label="Deposit" value={listing.deposit != null ? formatMoney(listing.deposit) : "—"} />
-              <PriceRow label="Aurora Homes fee" value={`${listing.platform_fee_percent}%`} />
+              <PriceRow label="Zouza fee" value="€0" />
               <View style={styles.priceTotalDivider} />
-              <PriceRow label="Total due at move-in" value={listing.total_move_in_cost != null ? formatMoney(listing.total_move_in_cost) : "—"} emphasize />
+              <PriceRow label="Total due at move-in" value={formatMoney((listing.price_monthly ?? 0) + (listing.utilities_monthly ?? 0) + (listing.deposit ?? 0))} emphasize />
+              <Text style={styles.muted}>Every euro goes to the owner or comes back to you as the deposit.</Text>
             </>
           )}
 
@@ -266,14 +267,14 @@ export default function ListingDetailScreen() {
 
           <Divider />
 
-          <Text style={styles.sectionTitle}>Ask the property AI agent</Text>
-          <Text style={[styles.muted, { marginBottom: spacing.md }]}>Every Aurora Homes listing has its own assistant, trained on this property's details.</Text>
-          <PropertyAgentPanel listingTitle={listing.title} faq={listing.faq} />
+          <Text style={styles.sectionTitle}>Ask Suzi</Text>
+          <Text style={[styles.muted, { marginBottom: spacing.md }]}>Suzi knows this listing’s facts and answers instantly, any time.</Text>
+          <PropertyAgentPanel listing={listing} />
 
           <Divider />
 
           <Text style={styles.muted}>
-            A standard contract template becomes available once a viewing is confirmed. Aurora Homes does not provide legal advice — review it with a professional before signing.
+            A standard contract template becomes available once a viewing is confirmed. Zouza does not provide legal advice — review it with a professional before signing.
           </Text>
         </View>
       </ScrollView>

@@ -34,7 +34,7 @@ export default function ContactScreen() {
           <View style={styles.successWrap}>
             <Ionicons name="checkmark-circle" size={48} color={colors.success} />
             <Text style={styles.successTitle}>Thanks for reaching out</Text>
-            <Text style={styles.subtitle}>We'll get back to you at {email} shortly.</Text>
+            <Text style={styles.subtitle}>We’ll get back to you at {email} shortly.</Text>
             <Button label="Back to home" variant="dark" style={{ marginTop: spacing.lg, alignSelf: "stretch" }} onPress={() => router.replace("/(tabs)")} />
           </View>
         ) : (

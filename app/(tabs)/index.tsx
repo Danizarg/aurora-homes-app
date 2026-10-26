@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radius, spacing, typography } from "../../constants/theme";
 import { SearchPill } from "../../components/search/SearchPill";
@@ -16,7 +15,7 @@ import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { fetchPublishedListings } from "../../lib/supabase/listings";
 import { applyFilters, countActiveFilters, defaultFilters, type FiltersState, type SortOrder } from "../../lib/listings/filter";
-import type { Listing, ListingMode } from "../../types";
+import type { Listing } from "../../types";
 
 type Params = { q?: string; mode?: string; type?: string; priceMax?: string };
 
@@ -184,10 +183,10 @@ export default function ExploreScreen() {
         ) : null}
 
         <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
-          <Image source={{ uri: "https://picsum.photos/seed/aurora-host/600/400" }} style={styles.hostImage} />
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-host/600/400" }} style={styles.hostImage} />
           <View style={styles.hostBody}>
-            <Text style={styles.hostTitle}>List your home with Aurora AI</Text>
-            <Text style={styles.hostText}>Upload photos. Aurora writes the listing, FAQ and translations for you.</Text>
+            <Text style={styles.hostTitle}>List your home with Suzi</Text>
+            <Text style={styles.hostText}>Upload photos. Suzi writes the listing, FAQ and translations for you. €20/month, no commission.</Text>
             <Text style={styles.hostLink}>Learn more</Text>
           </View>
         </Pressable>

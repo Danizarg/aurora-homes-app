@@ -1,19 +1,25 @@
-// Aurora Homes design system.
+// Zouza design system.
 //
 // Layout, spacing, type scale and neutrals follow the Airbnb mobile app
 // (white canvas, near-black text, hairline dividers, 8/12px radii, pill
-// search bar, gradient primary button). Brand colour is Aurora's own and is
-// the only thing you need to change to re-skin the accent everywhere.
+// search bar, gradient primary button). The accent is Zouza's violet brand
+// scale from design/tokens.json in the zouza-ai repo (brand-500 #7255F0);
+// `brand` below is the only thing to change to re-skin the accent.
+// The brand mark is components/brand/ZMark.tsx — never a sparkles icon.
 
 export const brand = {
-  name: "Aurora Homes",
-  // Primary accent (Aurora amber). Used for the active tab, saved hearts,
-  // links that need emphasis and the primary button gradient.
-  primary: "#C68A14",
-  primaryDark: "#A8700D",
-  primaryLight: "#FBF3E3",
-  // Three-stop gradient used on primary buttons (Airbnb-style).
-  gradient: ["#E0A526", "#C68A14", "#B07510"] as const,
+  name: "Zouza",
+  assistant: "Suzi",
+  /** brand-500: the active tab, saved hearts, the Suzi orb, emphasised links. */
+  primary: "#7255F0",
+  /** brand-600: pressed / text-on-light accent. */
+  primaryDark: "#5E3FE0",
+  /** brand-100: tinted chips and icon circles. */
+  primaryLight: "#EEEAFE",
+  /** brand-900: dark bands and user chat bubbles. */
+  primaryDeep: "#2D1F7A",
+  /** Three-stop gradient used on primary buttons (Airbnb-style), brand-400 → 500 → 600. */
+  gradient: ["#8B72F3", "#7255F0", "#5E3FE0"] as const,
 };
 
 export const colors = {
@@ -21,6 +27,7 @@ export const colors = {
   primary: brand.primary,
   primaryDark: brand.primaryDark,
   primaryLight: brand.primaryLight,
+  primaryDeep: brand.primaryDeep,
 
   // Canvas
   white: "#FFFFFF",

@@ -19,7 +19,7 @@ const settings: MenuItem[] = [
 ];
 
 const support: MenuItem[] = [
-  { icon: "help-circle-outline", label: "Contact Aurora Homes", route: "/contact" },
+  { icon: "help-circle-outline", label: "Contact Zouza", route: "/contact" },
   { icon: "document-text-outline", label: "Terms of service", route: "/legal/terms" },
   { icon: "lock-closed-outline", label: "Privacy policy", route: "/legal/privacy" },
   { icon: "information-circle-outline", label: "Disclaimer", route: "/legal/disclaimer" },
@@ -46,8 +46,8 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.identityCard}>
-          <Avatar name="Aurora" size={88} />
-          <Text style={styles.name}>Aurora Demo</Text>
+          <Avatar name="Zouza" size={88} />
+          <Text style={styles.name}>Zouza Demo</Text>
           <Text style={styles.role}>Guest · Not yet verified</Text>
         </View>
 
@@ -59,10 +59,10 @@ export default function ProfileScreen() {
 
         <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hostTitle}>List your home with Aurora</Text>
-            <Text style={styles.hostBody}>Upload photos — Aurora writes the exposé, FAQ and translations.</Text>
+            <Text style={styles.hostTitle}>List your home with Suzi</Text>
+            <Text style={styles.hostBody}>Upload photos — Suzi writes the exposé, FAQ and translations. €20/month, no commission.</Text>
           </View>
-          <Image source={{ uri: "https://picsum.photos/seed/aurora-profile-host/200/200" }} style={styles.hostImage} />
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-profile-host/200/200" }} style={styles.hostImage} />
         </Pressable>
 
         <Text style={styles.sectionTitle}>Settings</Text>

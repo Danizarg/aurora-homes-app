@@ -43,7 +43,7 @@ export default function OwnerDashboardScreen() {
 
         <Text style={styles.sectionTitle}>Published ({published.length})</Text>
         {published.length === 0 ? (
-          <Text style={styles.muted}>No published listings yet. Upload photos and let Aurora build your first one.</Text>
+          <Text style={styles.muted}>No published listings yet. Upload photos and let Suzi write your first one.</Text>
         ) : (
           published.map((l) => <ListingRow key={l.id} listing={l} />)
         )}
@@ -69,7 +69,7 @@ export default function OwnerDashboardScreen() {
 
         <Divider />
 
-        <Text style={styles.sectionTitle}>AI agent activity</Text>
+        <Text style={styles.sectionTitle}>Suzi activity</Text>
         <View style={styles.statsRow}>
           <Stat value="18" label="Questions answered" />
           <Stat value="3" label="Qualified leads" />

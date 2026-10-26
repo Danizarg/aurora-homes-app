@@ -1,15 +1,20 @@
-# Aurora Homes
+# Zouza — iOS / Android app
 
-Find your next home. Powered by AI.
+**Just tell Suzi what you need. She'll do the rest.**
 
-Aurora Homes is an AI-first home discovery and marketplace app, built as an
-Expo / React Native (TypeScript) app. Renters and buyers search verified
-homes with transparent pricing and a 24/7 AI property assistant on every
-listing. Owners upload photos and chat with Aurora, which builds the
-professional listing, exposé, FAQ, and translations for them.
+The Zouza mobile app: an Expo / React Native (TypeScript) app for the
+Spain-first AI real-estate platform at [zouza.ai](https://zouza.ai). Buyers
+and tenants search homes and ask Suzi about any property; owners photograph
+their place and let Suzi write the listing.
 
-Aurora Homes is a pure intermediary marketplace in this MVP: no payments,
-escrow, rent collection, or legal/tax advice.
+Zouza is a pure intermediary: no payments, escrow, rent collection, deposits
+or legal/tax/financial advice, in code or copy. Tenants and buyers pay
+nothing; owners pay a flat €20/month while a listing is live; there are no
+transaction fees of any kind.
+
+The web product and its development context live in the
+[zouza-ai](https://github.com/Danizarg/zouza-ai) repository (`CLAUDE.md`
+there is the source of truth for product, pricing and design decisions).
 
 ## Running locally
 
@@ -18,154 +23,125 @@ npm install
 npx expo start
 ```
 
-Scan the QR code with the **Expo Go** app on your iPhone (App Store) to run
-it on-device. No backend or API keys are required — the app runs entirely on
-mock data and local storage until you configure Supabase / AI keys (see
-below).
+Scan the QR code with **Expo Go** on an iPhone (App Store). The phone and
+the PC must be on the same Wi-Fi; if they aren't, start with
+`npx expo start --tunnel` instead. No backend or keys are needed: the app
+runs on demo listings and local storage until Supabase is configured
+(below), and Suzi answers through zouza.ai.
+
+Expo Go only runs projects on the current SDK, so keep `expo` on the
+version Expo Go supports (SDK 58 as of 2026-10-16).
+
+## Suzi
+
+Suzi runs on a real model. The app holds **no provider key**: it calls two
+endpoints on the website, which hold the key, the prompts and the
+per-visitor budget:
+
+| App surface | Calls | Falls back to |
+|---|---|---|
+| Ask Suzi on a listing (`PropertyAgentPanel`) | `POST https://zouza.ai/api/suzi/ask` | the listing's FAQ matcher |
+| List with Suzi — generation step | `POST https://zouza.ai/api/suzi/generate` | the local listing template |
+
+`lib/ai/suzi.ts` is the bridge; `lib/ai/service.ts` is the deterministic
+layer it falls back to when offline or rate-limited. `EXPO_PUBLIC_APP_URL`
+overrides the website origin (defaults to production, so a TestFlight build
+needs no `.env`).
+
+## Design system
+
+The UI follows the Airbnb mobile app's layout and visual language: white
+canvas, near-black text, hairline dividers, 8/12px radii, pill search bar,
+category tabs, square photo cards with hearts and "Guest favourite" badges,
+sticky price/CTA bars and a gradient primary button. The accent is Zouza's
+violet brand scale (brand-500 `#7255F0`, from `design/tokens.json` in
+zouza-ai); `constants/theme.ts` holds it in one `brand` block, so changing
+those values re-skins the accent across the app. The brand mark is
+`components/brand/ZMark.tsx` — the same Z mark as the website. Never a
+sparkles icon for Zouza or Suzi.
 
 ## Project structure
 
 ```
-app/                    Expo Router screens (file-based routing)
-  (tabs)/                Bottom tabs: Explore, Wishlists, Aurora AI, Messages, Profile
+app/                    Expo Router screens
+  (tabs)/                Explore, Wishlists, Suzi, Messages, Profile
   search-modal.tsx        "Where to?" search sheet (destination, type, budget)
   wishlists/saved.tsx     Saved homes list
-  listing/[id].tsx        Listing detail + AI property agent
-  create-listing/          AI Listing Builder (photos → address → price → AI chat → publish)
-  messages/[id].tsx        Conversation detail
-  auth/                    Login, signup, forgot password
-  legal/                   Terms, privacy, disclaimer
+  listing/[id].tsx        Listing detail + Ask Suzi
+  create-listing/          List with Suzi (photos → address → price → chat → publish)
+  messages/[id].tsx, auth/, legal/, pricing, trust, contact, rent-out, sell
 components/
-  ui/                      Buttons, cards, chips, badges, text fields, headers, dividers
-  search/                  SearchPill, CategoryTabs, FiltersSheet
-  listings/                ListingCard (feed) + CompactListingCard (carousels)
-  host/                    HostLanding (Rent out / Sell landing pages)
-  ai/                      PropertyAgentPanel (per-listing AI chat)
+  brand/ZMark             The brand mark
+  ui/                     Button, Card, Chip, Badge, TextField, ScreenHeader, Divider…
+  search/                 SearchPill, CategoryTabs, FiltersSheet
+  listings/ListingCard    Feed card + CompactListingCard for carousels
+  host/HostLanding        Rent out / Sell landing pages
+  ai/PropertyAgentPanel   Per-listing Suzi chat
 lib/
-  supabase/                Supabase client + SQL schema
-  ai/                      AI service abstraction (mock + real-key ready)
-  mock/                    Mock listings, messages, AsyncStorage-backed storage
-  listings/                Presentation helpers (price, rating, headline) + filtering
-  auth/                    Auth abstraction (Supabase or mock session)
-types/                    Shared TypeScript domain types
-constants/theme.ts        Design system (brand colour, neutrals, spacing, type scale)
-supabase/schema.sql        Postgres schema + RLS policies
+  ai/suzi.ts              Real Suzi via zouza.ai (with fallback)
+  ai/service.ts           Deterministic layer
+  listings/               Presentation helpers (price, rating, headline) + filtering
+  supabase/, auth/, mock/
+constants/theme.ts        Airbnb-style tokens with the Zouza brand accent
+supabase/schema.sql       Postgres schema + RLS
 ```
 
-## Design system
+## What's real vs. demo
 
-The UI follows the Airbnb mobile app's layout and visual language (white
-canvas, near-black text, hairline dividers, 8/12px radii, pill search bar,
-category tabs, square photo cards with hearts and "Guest favourite" badges,
-sticky price/CTA bars, gradient primary button) with Aurora's own branding.
-
-Everything brand-specific lives in `constants/theme.ts` under `brand`:
-change `brand.primary`, `brand.primaryDark`, `brand.primaryLight` and
-`brand.gradient` to re-skin the accent colour across the whole app.
-
-## Screens built
-
-Explore (search pill, Homes/Stay/Rent/Buy/Live category tabs, per-city
-carousels, results mode with filters), "Where to?" search sheet, Filters sheet
-(property type tiles, price presets, room steppers, amenities, trust toggles,
-sort), Wishlists + saved homes, Listing detail (photo gallery, guest-favourite
-card, host row, highlights, amenities, price details, reviews, FAQ, AI agent,
-sticky request bar), Aurora AI hub, AI Listing Builder (host-setup style:
-photos → address → price → AI chat → generation → review → preview →
-publish), Rent Out, Sell, Messages inbox + conversation, Profile, Owner
-dashboard, Login/Signup/Forgot password, Contact, Trust & verification,
-Pricing, Terms/Privacy/Disclaimer.
-
-## The AI Listing Builder
-
-Instead of a long form, owners go through three quick steps — upload photos,
-enter an address, optionally enter a price — then Aurora takes over in a
-chat interface:
-
-1. Aurora states what it can already see in the photos (mock computer-vision
-   detection: pool, sea view, terrace, garden, kitchen style, furnishing,
-   modernisation level — see `detectFeaturesFromPhotos` in `lib/ai/service.ts`).
-2. Aurora asks only for what it can't detect from photos: property type,
-   bedrooms, bathrooms, size, pets allowed, parking, and whether to position
-   the listing as a long-term rental, holiday stay, or sale.
-3. Aurora generates the full listing (title, exposé, FAQ, translations, price
-   breakdown, and the property's own AI assistant knowledge base) and the
-   owner reviews and publishes it.
-
-## What's real vs. mock
-
-- **Real**: navigation, the full AI Listing Builder flow (image picking via
-  Expo Image Picker, chat-style question flow, generated content
-  review/edit), filters and search logic, saved listings (persisted via
-  AsyncStorage), local listing publishing (persisted via AsyncStorage).
-- **Mock (by design, until you connect a backend)**: Spain-first sample
-  listings, conversations/messages, AI photo feature detection, AI
-  exposé/FAQ/translation generation, and the per-listing AI agent's answers.
-  All mock logic lives under `lib/mock` and `lib/ai` so it can be swapped for
-  real services without touching the UI.
+- **Real**: navigation, Suzi answers and listing generation (through
+  zouza.ai), the full List-with-Suzi flow, filters and search, saved
+  listings and locally published listings (AsyncStorage).
+- **Demo until Supabase is configured**: the Spain-first sample listings,
+  conversations/messages, photo feature detection, and accounts (sign-in
+  works against Supabase only when configured; otherwise it is a demo
+  session).
 
 ## Connecting Supabase
 
-The app is wired to a real Supabase project. To set one up from scratch:
+Copy `.env.example` to `.env`, fill `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`, run `supabase/schema.sql` in the project's
+SQL editor, enable **Anonymous sign-ins** under Authentication → Providers,
+and restart `npx expo start`. Use the same Supabase project as the website
+so listings published in the app appear on zouza.ai.
 
-1. Create a project at supabase.com → **Settings → API**, copy the Project
-   URL and anon public key into `.env` (see `.env.example` for the variable
-   names). `.env` is gitignored — it's never committed.
-2. Open the **SQL Editor** in the Supabase dashboard, paste the contents of
-   `supabase/schema.sql`, and run it. This creates all tables, a
-   `listing-images` storage bucket with public-read/owner-write policies,
-   and a trigger that auto-creates a `profiles` row for every new auth user.
-3. Go to **Authentication → Providers** and enable **Anonymous sign-ins**.
-   The AI Listing Builder uses an anonymous Supabase session to own a
-   published listing so you can demo publishing without a full signup flow
-   (see `getOrCreateSupabaseUserId` in `lib/auth/service.ts`). Email/password
-   sign-in and sign-up already work too, via the existing Login/Signup
-   screens.
-4. Restart `npx expo start`.
+## TestFlight (from Windows, macOS or Linux — no Xcode needed)
 
-Once configured:
-- **Search** and **Home** read published listings from Supabase (merged with
-  the mock Spain-first catalog) via `lib/supabase/listings.ts`.
-- **AI Listing Builder** publish uploads photos to Supabase Storage and
-  inserts the listing + images into Postgres.
-- **Owner dashboard** shows listings owned by the signed-in Supabase user
-  alongside anything published locally.
-
-Without `.env` values, the app keeps working entirely on local mock data and
-AsyncStorage — no code changes required.
-
-## Connecting a real AI model
-
-Add `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` to `.env`. `lib/ai/service.ts`
-exposes `generateListingContent()` and `answerAgentQuestion()` with the exact
-input/output shapes the UI already expects — implement the real API call
-inside the `hasRealAiKey` branch and the rest of the app needs no changes.
-
-## Building with EAS / TestFlight
+Builds run in the cloud on EAS. You need an Apple Developer Program
+membership and an Expo account.
 
 ```bash
 npm install -g eas-cli
 eas login
-eas build:configure
-eas build --platform ios --profile preview
-```
-
-Once the build finishes, submit it to TestFlight:
-
-```bash
+eas build:configure            # links this repo to an EAS project (one-time)
+eas build --platform ios --profile production
 eas submit --platform ios --latest
 ```
 
-`app.json` already sets the bundle identifier (`com.aurorahomes.app`) and app
-name ("Aurora Homes"). Replace the placeholder icon/splash assets in
-`assets/` with final branding before submitting.
+`eas build` asks you to sign in with your Apple ID the first time and
+creates the signing certificate and provisioning profile for you. `eas
+submit` uploads the build to App Store Connect; it appears under TestFlight
+within a few minutes of processing.
 
-## Before public App Store release
+Then in App Store Connect → TestFlight:
 
-- Replace mock AI generation with a real model call (OpenAI/Anthropic).
-- Connect Supabase for persistent listings, auth, messaging, and storage.
-- Replace placeholder icon, splash screen, and screenshots with final assets.
-- Replace Terms/Privacy/Disclaimer placeholder text with reviewed legal copy.
-- Add real push notifications for messages and viewing requests.
-- Add moderation/reporting workflow for fake listings.
-- Perform an App Store review of permissions text (photo library usage).
+1. **Internal testing**: add team members; they get the build immediately.
+2. **External testing**: create a group, add tester emails (up to 10,000),
+   and submit the build for Beta App Review. The first build of an app is
+   reviewed by Apple (usually within a day); later builds are usually
+   automatic.
+
+Bundle identifier: `ai.zouza.app`. App name: Zouza. Version is managed by
+EAS (`appVersionSource: remote`, build number auto-increments).
+
+## Before App Store review
+
+- Terms, privacy and disclaimer screens still carry placeholder legal
+  copy; Apple needs a public privacy-policy URL in App Store Connect.
+- The app offers account creation, so Apple requires in-app account
+  deletion (guideline 5.1.1(v)) — not built yet.
+- Demo listings are labelled as examples on the website; label them in the
+  app too, or connect Supabase so real inventory shows.
+- App Store screenshots and the app privacy questionnaire (data collected:
+  email, listing content, photos, messages).
+- Push notifications for messages and viewing requests.
+- Moderation/reporting for fake listings.

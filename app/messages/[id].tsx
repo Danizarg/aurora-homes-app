@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "../../constants/theme";
 import { IconButton } from "../../components/ui/IconButton";
+import { ZMark } from "../../components/brand/ZMark";
 import { Avatar } from "../../components/ui/Avatar";
 import { mockConversations, mockMessages } from "../../lib/mock/messages";
 import type { Message } from "../../types";
@@ -47,12 +48,12 @@ export default function ConversationScreen() {
             const ai = item.sender === "ai";
             return (
               <View style={[styles.messageRow, me && styles.messageRowMe]}>
-                {!me ? <Avatar name={ai ? "Aurora" : name} size={28} style={{ marginRight: spacing.sm, backgroundColor: ai ? colors.primary : colors.text }} /> : null}
+                {!me ? <Avatar name={ai ? "Suzi" : name} size={28} style={{ marginRight: spacing.sm, backgroundColor: ai ? colors.primary : colors.text }} /> : null}
                 <View style={[styles.bubble, me ? styles.bubbleMe : ai ? styles.bubbleAi : styles.bubbleThem]}>
                   {ai ? (
                     <View style={styles.aiLabelRow}>
-                      <Ionicons name="sparkles" size={11} color={colors.primaryDark} />
-                      <Text style={styles.aiLabel}>Aurora AI</Text>
+                      <ZMark size={10} color={colors.primaryDark} />
+                      <Text style={styles.aiLabel}>Suzi</Text>
                     </View>
                   ) : null}
                   <Text style={me ? styles.bubbleTextMe : styles.bubbleText}>{item.text}</Text>

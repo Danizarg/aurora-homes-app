@@ -13,8 +13,8 @@ import { mockListings } from "../../lib/mock/listings";
 const steps = [
   { title: "Add photos", body: "Upload a handful of photos — interior, exterior, key rooms." },
   { title: "Add the address", body: "Just the city or area. That's it." },
-  { title: "Add a price (optional)", body: "Set a price now, or let Aurora suggest one later." },
-  { title: "Chat with Aurora", body: "Aurora tells you what it already sees, then asks only what it can't detect." },
+  { title: "Add a price (optional)", body: "Set a price now, or let Suzi suggest one later." },
+  { title: "Chat with Suzi", body: "Suzi tells you what she already sees, then asks only what she can't detect." },
 ];
 
 /** Center tab, Airbnb "Trips"-style page: large title, hero card with image and gradient CTA, numbered steps. */
@@ -24,14 +24,14 @@ export default function AiHubScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Aurora AI</Text>
+        <Text style={styles.title}>Suzi</Text>
 
         <View style={styles.hero}>
-          <Image source={{ uri: "https://picsum.photos/seed/aurora-ai-hero/800/520" }} style={styles.heroImage} />
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-suzi-hero/800/520" }} style={styles.heroImage} />
           <View style={styles.heroBody}>
-            <Text style={styles.heroTitle}>Upload photos. Aurora creates the listing.</Text>
+            <Text style={styles.heroTitle}>Upload photos. Suzi writes the listing.</Text>
             <Text style={styles.heroText}>
-              Exposé, FAQ, translations and a dedicated property assistant — built automatically from what you upload.
+              Exposé, FAQ and translations, written from your photos. Then Suzi answers buyers’ and tenants’ questions for you, 24/7.
             </Text>
             <Button label="Upload photos" icon="camera-outline" style={{ marginTop: spacing.lg }} onPress={() => router.push("/create-listing")} />
           </View>
@@ -39,7 +39,7 @@ export default function AiHubScreen() {
 
         <Divider />
 
-        <Text style={styles.sectionTitle}>It's easy to get started</Text>
+        <Text style={styles.sectionTitle}>It’s easy to get started</Text>
         {steps.map((s, i) => (
           <View key={s.title} style={[styles.step, i === steps.length - 1 && { borderBottomWidth: 0 }]}>
             <Text style={styles.stepNumber}>{i + 1}</Text>
@@ -52,22 +52,22 @@ export default function AiHubScreen() {
 
         <Divider />
 
-        <Text style={styles.sectionTitle}>A listing Aurora generated</Text>
+        <Text style={styles.sectionTitle}>A listing Suzi wrote</Text>
         <ListingCard listing={exampleListing} />
 
         <Divider gap={spacing.sm} />
 
-        <Text style={styles.sectionTitle}>Try the property AI agent</Text>
+        <Text style={styles.sectionTitle}>Try Suzi</Text>
         <Text style={styles.sectionBody}>This is the same assistant renters and buyers chat with on a live listing.</Text>
-        <PropertyAgentPanel listingTitle={exampleListing.title} faq={exampleListing.faq} />
+        <PropertyAgentPanel listing={exampleListing} />
 
         <Card variant="flat" style={{ marginTop: spacing.xl }}>
           <View style={styles.noteRow}>
             <Ionicons name="information-circle-outline" size={22} color={colors.text} />
-            <Text style={styles.noteTitle}>What Aurora does not do</Text>
+            <Text style={styles.noteTitle}>What Suzi does not do</Text>
           </View>
           <Text style={styles.noteBody}>
-            Aurora Homes does not process payments, hold deposits, collect rent, or provide legal or tax advice. It handles
+            Zouza does not process payments, hold deposits, collect rent, or provide legal, tax or financial advice. Suzi handles
             marketing and communication — the agreement is always direct between owner and tenant or buyer.
           </Text>
         </Card>

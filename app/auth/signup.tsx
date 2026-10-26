@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { colors, spacing, typography } from "../../constants/theme";
@@ -38,7 +38,7 @@ export default function SignupScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Text style={styles.terms}>
-          By selecting Agree and continue, I agree to Aurora Homes' Terms of Service and acknowledge the Privacy Policy.
+          By selecting Agree and continue, I agree to Zouza’s Terms of Service and acknowledge the Privacy Policy.
         </Text>
 
         <Button label="Agree and continue" loading={loading} onPress={handleSignup} style={{ marginTop: spacing.md }} />

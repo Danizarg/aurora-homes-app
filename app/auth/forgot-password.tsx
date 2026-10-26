@@ -24,7 +24,7 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader title="Forgot password?" leading="back" />
       <View style={styles.content}>
-        <Text style={styles.subtitle}>Enter the email address associated with your account and we'll send you a link to reset your password.</Text>
+        <Text style={styles.subtitle}>Enter the email address associated with your account and we’ll send you a link to reset your password.</Text>
 
         {sent ? (
           <Text style={styles.success}>If an account exists for {email}, a reset link has been sent.</Text>
