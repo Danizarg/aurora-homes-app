@@ -40,7 +40,9 @@
         {
           "photosPermission": "Zouza needs access to your photos so Suzi can write your listing from them."
         }
-      ]
+      ],
+      "expo-image",
+      "expo-status-bar"
     ],
     "extra": {
       "router": {}
