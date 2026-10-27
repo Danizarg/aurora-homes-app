@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, type ColorValue } from "react-native";
-import { colors, layout, typography } from "../../constants/theme";
+import { colors, layout, shadow, typography } from "../../constants/theme";
 import { ZMark } from "../../components/brand/ZMark";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -22,8 +22,8 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
           backgroundColor: colors.white,
-          borderTopWidth: 1,
-          borderTopColor: colors.divider,
+          borderTopWidth: 0,
+          ...shadow.tabBar,
           height: Platform.OS === "web" ? 72 : layout.tabBarHeight,
           paddingTop: 8,
           paddingBottom: Platform.OS === "web" ? 10 : 24,

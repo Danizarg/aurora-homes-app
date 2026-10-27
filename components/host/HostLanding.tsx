@@ -1,7 +1,8 @@
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Divider } from "../ui/Divider";
@@ -33,7 +34,7 @@ export function HostLanding({ title, subtitle, imageSeed, stepsTitle, steps, dis
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        <Image source={{ uri: `https://picsum.photos/seed/${imageSeed}/900/600` }} style={styles.hero} />
+        <Image source={{ uri: `https://picsum.photos/seed/${imageSeed}/900/600` }} style={styles.hero} contentFit="cover" transition={motion.image} />
 
         <Text style={styles.stepsTitle}>{stepsTitle}</Text>
         {steps.map((s, i) => (

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors, spacing, typography } from "../../constants/theme";
 import { addDays, startOfToday, toIsoDate } from "../../lib/booking/dates";
+import { haptic } from "../../lib/ui/haptics";
 
 export interface DateRange {
   start?: string;
@@ -59,6 +60,7 @@ export function Calendar({ mode, value, onChange, blocked, minDate, months = 6 }
 
   function pick(iso: string) {
     if (isBlocked(iso)) return;
+    haptic.select();
     if (mode === "single") {
       onChange({ start: iso });
       return;

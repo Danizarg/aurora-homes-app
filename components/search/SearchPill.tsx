@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { PressableScale } from "../ui/PressableScale";
 
 interface SearchPillProps {
   onPress: () => void;
@@ -12,7 +13,7 @@ interface SearchPillProps {
 /** The Airbnb search pill: white, fully rounded, soft shadow, search icon on the left. */
 export function SearchPill({ onPress, query, subtitle }: SearchPillProps) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, pressed && styles.pressed]}>
+    <PressableScale onPress={onPress} pressedScale={0.98} style={styles.pill}>
       <Ionicons name="search" size={18} color={colors.text} style={styles.icon} />
       {query ? (
         <View style={{ flex: 1 }}>
@@ -22,7 +23,7 @@ export function SearchPill({ onPress, query, subtitle }: SearchPillProps) {
       ) : (
         <Text style={styles.placeholder}>Start your search</Text>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -39,7 +40,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md + 4,
     ...shadow.search,
   },
-  pressed: { backgroundColor: colors.bgSecondary },
   icon: { marginRight: spacing.sm + 4 },
   placeholder: { ...typography.smallBold, color: colors.text },
   query: { ...typography.smallBold, color: colors.text },

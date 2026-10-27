@@ -66,13 +66,28 @@ export const spacing = {
   xxl: 48,
 } as const;
 
+// Softer than Airbnb's web: controls 12, photos and cards 16, sheets 28.
 export const radius = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  xs: 6,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 28,
   pill: 999,
+} as const;
+
+/** Timings and springs shared by every animated control. */
+export const motion = {
+  /** Spring used while a control is held down: quick and slightly firm. */
+  springPress: { damping: 18, stiffness: 320, mass: 0.6 },
+  /** Spring used on release: softer, with a hint of overshoot. */
+  springRelease: { damping: 14, stiffness: 220, mass: 0.7 },
+  /** Fade/ease-in duration for content arriving on screen (ms). */
+  reveal: 360,
+  /** Stagger between neighbouring items (ms). */
+  stagger: 60,
+  /** Cross-fade for images as they load (ms). */
+  image: 320,
 } as const;
 
 // Airbnb Cereal is proprietary; the system font (SF Pro / Roboto) is used
@@ -94,38 +109,47 @@ export const typography = {
   tab: { fontSize: 10, lineHeight: 12, fontWeight: "500" as const },
 };
 
+// Soft, wide, low-opacity shadows: things look lifted, never outlined.
 export const shadow = {
   // Search pill / floating controls
   search: {
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
   },
   // Small white pills on top of photos (badges, heart)
   float: {
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   // Elevated cards (profile card, host card)
   card: {
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
   },
   // Sticky bars
   bar: {
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
     elevation: 8,
+  },
+  // Tab bar: replaces the hairline so the bar floats on the content
+  tabBar: {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 10,
   },
 };
 

@@ -9,6 +9,7 @@ import { Calendar, type DateRange } from "./Calendar";
 import { blockedDaysFrom, bookingCopy, bookingKindFor, describeBooking, earliestDate, formatDay, nightsBetween } from "../../lib/booking/dates";
 import { addBookingRequest, getBookingRequests, startConversation } from "../../lib/mock/storage";
 import { formatMoney, priceParts } from "../../lib/listings/presentation";
+import { haptic } from "../../lib/ui/haptics";
 import type { BookingRequest, Listing } from "../../types";
 
 interface BookingSheetProps {
@@ -82,6 +83,7 @@ export function BookingSheet({ listing, visible, onClose, onSubmitted }: Booking
       qualifiedLead: true,
     });
     setSubmitting(false);
+    haptic.success();
     onSubmitted(booking, conversation.id);
   }
 

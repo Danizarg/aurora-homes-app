@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { FlatList, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { SearchPill } from "../../components/search/SearchPill";
 import { CategoryTabs, categories, type Category } from "../../components/search/CategoryTabs";
 import { FiltersSheet } from "../../components/search/FiltersSheet";
@@ -11,6 +12,8 @@ import { CompactListingCard, ListingCard } from "../../components/listings/Listi
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
+import { Reveal } from "../../components/ui/Reveal";
+import { PressableScale } from "../../components/ui/PressableScale";
 import { mockListings } from "../../lib/mock/listings";
 import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
@@ -121,8 +124,10 @@ export default function ExploreScreen() {
               {query ? ` in ${query}` : ""}
             </Text>
           }
-          renderItem={({ item }) => (
-            <ListingCard listing={item} saved={savedIds.includes(item.id)} onToggleSave={handleToggleSave} />
+          renderItem={({ item, index }) => (
+            <Reveal index={index}>
+              <ListingCard listing={item} saved={savedIds.includes(item.id)} onToggleSave={handleToggleSave} />
+            </Reveal>
           )}
           ListEmptyComponent={
             <EmptyState
@@ -134,10 +139,10 @@ export default function ExploreScreen() {
           }
         />
 
-        <Pressable style={styles.mapButton} onPress={() => router.push({ pathname: "/map", params: { q: query, mode: resultsMode === "all" ? "" : resultsMode, type: params.type ?? "", priceMax: params.priceMax ?? "" } })}>
+        <PressableScale pressedScale={0.94} style={styles.mapButton} onPress={() => router.push({ pathname: "/map", params: { q: query, mode: resultsMode === "all" ? "" : resultsMode, type: params.type ?? "", priceMax: params.priceMax ?? "" } })}>
           <Text style={styles.mapButtonText}>Map</Text>
           <Ionicons name="map-outline" size={16} color={colors.white} />
-        </Pressable>
+        </PressableScale>
 
         <FiltersSheet
           visible={showFilters}
@@ -163,8 +168,8 @@ export default function ExploreScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.homeContent}>
-        {sections.map((section) => (
-          <View key={section.key} style={styles.section}>
+        {sections.map((section, sectionIndex) => (
+          <Reveal key={section.key} index={sectionIndex} style={styles.section}>
             <View style={styles.sectionHeader}>
               <SectionHeader title={section.title} onPress={() => router.setParams({ q: section.key, mode: category })} />
             </View>
@@ -179,7 +184,7 @@ export default function ExploreScreen() {
                 />
               ))}
             </ScrollView>
-          </View>
+          </Reveal>
         ))}
 
         {sections.length === 0 ? (
@@ -188,14 +193,14 @@ export default function ExploreScreen() {
           </View>
         ) : null}
 
-        <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
-          <Image source={{ uri: "https://picsum.photos/seed/zouza-host/600/400" }} style={styles.hostImage} />
+        <PressableScale pressedScale={0.985} style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-host/600/400" }} style={styles.hostImage} contentFit="cover" transition={motion.image} />
           <View style={styles.hostBody}>
             <Text style={styles.hostTitle}>List your home with Suzi</Text>
             <Text style={styles.hostText}>Upload photos. Suzi writes the listing, FAQ and translations for you. €20/month, no commission.</Text>
             <Text style={styles.hostLink}>Learn more</Text>
           </View>
-        </Pressable>
+        </PressableScale>
       </ScrollView>
     </SafeAreaView>
   );
