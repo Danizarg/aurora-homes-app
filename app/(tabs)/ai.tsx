@@ -1,8 +1,9 @@
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Divider } from "../../components/ui/Divider";
@@ -27,7 +28,7 @@ export default function AiHubScreen() {
         <Text style={styles.title}>Suzi</Text>
 
         <View style={styles.hero}>
-          <Image source={{ uri: "https://picsum.photos/seed/zouza-suzi-hero/800/520" }} style={styles.heroImage} />
+          <Image source={{ uri: "https://picsum.photos/seed/zouza-suzi-hero/800/520" }} style={styles.heroImage} contentFit="cover" transition={motion.image} />
           <View style={styles.heroBody}>
             <Text style={styles.heroTitle}>Upload photos. Suzi writes the listing.</Text>
             <Text style={styles.heroText}>

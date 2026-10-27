@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { brand, colors, layout, radius, spacing, typography } from "../../constants/theme";
+import { PressableScale } from "./PressableScale";
 
 type Variant = "primary" | "dark" | "outline" | "ghost" | "link";
 
@@ -56,17 +57,11 @@ export function Button({
   }
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        sizeStyles[size],
-        variantStyles[variant],
-        isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
-        style,
-      ]}
+      pressedScale={0.96}
+      style={[styles.base, sizeStyles[size], variantStyles[variant], isDisabled && styles.disabled, style]}
     >
       {variant === "primary" ? (
         <LinearGradient
@@ -77,7 +72,7 @@ export function Button({
         />
       ) : null}
       {content}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -91,14 +86,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   inner: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
+  pressed: { opacity: 0.7 },
   disabled: { opacity: 0.4 },
   label: { ...typography.bodyBold },
   linkLabel: { textDecorationLine: "underline" },
 });
 
 const sizeStyles: Record<NonNullable<ButtonProps["size"]>, ViewStyle> = {
-  sm: { height: 36, paddingHorizontal: spacing.md },
+  sm: { height: 36, paddingHorizontal: spacing.md, borderRadius: radius.pill },
   md: { height: layout.buttonHeight },
   lg: { height: 56, paddingHorizontal: spacing.xl },
 };

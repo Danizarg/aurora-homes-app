@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "../../constants/theme";
 import { Chip } from "../ui/Chip";
+import { SkeletonRow } from "../ui/Skeleton";
 import { placeIcon } from "./placeIcons";
 import { nearestAirport } from "../../lib/geo/airports";
 import { formatDistance, walkMinutes, driveMinutes, formatMinutes, type GeoPoint } from "../../lib/geo/distance";
@@ -65,9 +66,10 @@ export function NearbyPlaces({ center, onPlaces }: NearbyPlacesProps) {
       />
 
       {places === null && !error ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.text} />
-          <Text style={styles.loadingText}>Finding what’s around…</Text>
+        <View>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
         </View>
       ) : null}
 

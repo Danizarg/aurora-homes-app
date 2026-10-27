@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Divider } from "../../components/ui/Divider";
 import { Avatar } from "../../components/ui/Avatar";
@@ -114,7 +115,7 @@ export default function ListingDetailScreen() {
             onMomentumScrollEnd={(e) => setGalleryIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
           >
             {listing.images.map((image) => (
-              <Image key={image.id} source={{ uri: image.uri }} style={{ width, height: galleryHeight }} />
+              <Image key={image.id} source={{ uri: image.uri }} style={{ width, height: galleryHeight }} contentFit="cover" transition={motion.image} />
             ))}
           </ScrollView>
           <View style={[styles.galleryControls, { top: insets.top + spacing.sm }]}>

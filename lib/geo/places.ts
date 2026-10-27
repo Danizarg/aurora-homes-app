@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { distanceKm, type GeoPoint } from "./distance";
 
 export type PlaceCategory =
@@ -29,13 +30,103 @@ export const categoryLabel: Record<PlaceCategory, string> = {
   leisure: "Parks & gyms",
 };
 
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://lz4.overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass.private.coffee/api/interpreter",
+const USER_AGENT = "Zouza/1.0 (https://zouza.ai)";
+const TIMEOUT_MS = 10_000;
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PER_CATEGORY = 4;
+/** Bus stops are everywhere; cap them so transport doesn't crowd the list. */
+const PER_CATEGORY_TRANSPORT = 3;
+
+// ------------------------------------------------------------ classification
+
+function categorise(key: string | undefined, value: string | undefined): PlaceCategory | null {
+  if (key === "shop") {
+    if (value === "supermarket" || value === "convenience" || value === "greengrocer") return "supermarket";
+    if (value === "mall" || value === "department_store" || value === "bakery" || value === "clothes") return "shopping";
+    return null;
+  }
+  if (key === "amenity") {
+    if (value === "restaurant" || value === "cafe" || value === "bar" || value === "fast_food") return "food";
+    if (value === "pharmacy" || value === "hospital" || value === "clinic" || value === "doctors") return "health";
+    if (value === "school" || value === "kindergarten" || value === "university") return "education";
+    if (value === "bus_station") return "transport";
+    return null;
+  }
+  if (key === "highway" && value === "bus_stop") return "transport";
+  if (key === "railway" && (value === "station" || value === "halt")) return "transport";
+  if (key === "public_transport" && value === "station") return "transport";
+  if (key === "natural" && value === "beach") return "beach";
+  if (key === "leisure" && (value === "park" || value === "fitness_centre" || value === "sports_centre")) return "leisure";
+  return null;
+}
+
+function defaultName(category: PlaceCategory, key?: string, value?: string) {
+  if (key === "highway") return "Bus stop";
+  if (key === "railway") return "Train station";
+  if (value === "beach") return "Beach";
+  if (value === "park") return "Park";
+  return categoryLabel[category].replace(/s$/, "");
+}
+
+async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { ...init, headers: { accept: "application/json", "user-agent": USER_AGENT, ...(init.headers ?? {}) }, signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ------------------------------------------------------------ Photon (primary)
+// komoot's Photon: OpenStreetMap data, no key, answers a radius-bounded
+// reverse lookup with tag filters in ~200 ms. Three requests keep the mix
+// balanced (daily needs / food / transport & leisure).
+
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] };
+  properties: { osm_id?: number; osm_type?: string; osm_key?: string; osm_value?: string; name?: string };
+}
+
+const photonGroups: { tags: string[]; radiusKm: number; limit: number }[] = [
+  { tags: ["shop:supermarket", "shop:convenience", "shop:greengrocer", "shop:bakery", "shop:mall", "shop:department_store", "amenity:pharmacy", "amenity:hospital", "amenity:clinic", "amenity:school"], radiusKm: 1.5, limit: 30 },
+  { tags: ["amenity:restaurant", "amenity:cafe", "amenity:bar"], radiusKm: 1.2, limit: 15 },
+  { tags: ["highway:bus_stop", "railway:station", "amenity:bus_station", "natural:beach", "leisure:park", "leisure:fitness_centre", "leisure:sports_centre"], radiusKm: 3, limit: 30 },
 ];
-const TIMEOUT_MS = 12_000;
+
+async function fromPhoton(point: GeoPoint): Promise<NearbyPlace[]> {
+  const results = await Promise.allSettled(
+    photonGroups.map((g) => {
+      const tags = g.tags.map((t) => `osm_tag=${encodeURIComponent(t)}`).join("&");
+      const url = `https://photon.komoot.io/reverse?lat=${point.lat}&lon=${point.lng}&radius=${g.radiusKm}&limit=${g.limit}&${tags}`;
+      return fetchJson<{ features?: PhotonFeature[] }>(url);
+    })
+  );
+  const fulfilled = results.filter((r): r is PromiseFulfilledResult<{ features?: PhotonFeature[] }> => r.status === "fulfilled");
+  if (fulfilled.length === 0) throw new Error("Photon unavailable");
+
+  const places: NearbyPlace[] = [];
+  for (const r of fulfilled) {
+    for (const f of r.value.features ?? []) {
+      const { osm_key, osm_value, name, osm_id, osm_type } = f.properties;
+      const category = categorise(osm_key, osm_value);
+      if (!category) continue;
+      const [lng, lat] = f.geometry.coordinates;
+      places.push({
+        id: `${osm_type ?? "x"}/${osm_id ?? `${lat},${lng}`}`,
+        name: name ?? defaultName(category, osm_key, osm_value),
+        category,
+        point: { lat, lng },
+        km: distanceKm(point, { lat, lng }),
+      });
+    }
+  }
+  return places;
+}
+
+// ------------------------------------------------------------ Overpass (fallback)
 
 interface OverpassElement {
   type: "node" | "way" | "relation";
@@ -46,21 +137,13 @@ interface OverpassElement {
   tags?: Record<string, string>;
 }
 
-function categorise(tags: Record<string, string>): PlaceCategory | null {
-  const shop = tags.shop;
-  const amenity = tags.amenity;
-  if (shop === "supermarket" || shop === "convenience" || shop === "greengrocer") return "supermarket";
-  if (shop === "mall" || shop === "department_store" || shop === "bakery" || shop === "clothes") return "shopping";
-  if (amenity === "restaurant" || amenity === "cafe" || amenity === "bar" || amenity === "fast_food") return "food";
-  if (amenity === "pharmacy" || amenity === "hospital" || amenity === "clinic" || amenity === "doctors") return "health";
-  if (tags.highway === "bus_stop" || tags.railway === "station" || tags.railway === "halt" || tags.public_transport === "station" || tags.amenity === "bus_station") return "transport";
-  if (tags.natural === "beach") return "beach";
-  if (amenity === "school" || amenity === "kindergarten" || amenity === "university") return "education";
-  if (tags.leisure === "park" || tags.leisure === "fitness_centre" || tags.leisure === "sports_centre") return "leisure";
-  return null;
-}
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://lz4.overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
 
-function buildQuery({ lat, lng }: GeoPoint) {
+function overpassQuery({ lat, lng }: GeoPoint) {
   const near = (m: number) => `(around:${m},${lat},${lng})`;
   return `[out:json][timeout:10];
 (
@@ -68,95 +151,125 @@ function buildQuery({ lat, lng }: GeoPoint) {
   node["amenity"~"^(restaurant|cafe|bar|pharmacy|hospital|clinic|school|university)$"]${near(1200)};
   node["highway"="bus_stop"]${near(700)};
   node["railway"~"^(station|halt)$"]${near(3000)};
-  node["amenity"="bus_station"]${near(3000)};
   node["natural"="beach"]${near(3000)};
   way["natural"="beach"]${near(3000)};
   way["leisure"="park"]${near(1200)};
-  node["leisure"~"^(fitness_centre|sports_centre)$"]${near(1500)};
 );
 out center 80;`;
 }
 
-async function fetchOverpass(endpoint: string, query: string): Promise<OverpassElement[]> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-      body: `data=${encodeURIComponent(query)}`,
-      signal: controller.signal,
-    });
-    // 429/502/504 mean the mirror is busy — a failure, not "nothing nearby".
-    if (!res.ok) throw new Error(`Overpass ${res.status}`);
-    const json = (await res.json()) as { elements?: OverpassElement[] };
-    return json.elements ?? [];
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-const cache = new Map<string, NearbyPlace[]>();
-
-/**
- * Places around a point from OpenStreetMap (Overpass API — free, no key).
- * Returns a de-duplicated list sorted by distance, at most `limitPerCategory`
- * per category. Throws when every endpoint fails so the UI can show a retry.
- */
-export async function fetchNearbyPlaces(point: GeoPoint, limitPerCategory = 4): Promise<NearbyPlace[]> {
-  const key = `${point.lat.toFixed(4)},${point.lng.toFixed(4)}`;
-  const cached = cache.get(key);
-  if (cached) return cached;
-
-  const query = buildQuery(point);
-  // A mirror that answers (even with an empty list) is the truth; one that
-  // errors or times out is skipped. Only when all of them fail do we give up.
+async function fromOverpass(point: GeoPoint): Promise<NearbyPlace[]> {
+  const query = overpassQuery(point);
   let elements: OverpassElement[] | null = null;
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
-      elements = await fetchOverpass(endpoint, query);
+      const json = await fetchJson<{ elements?: OverpassElement[] }>(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      elements = json.elements ?? [];
       break;
     } catch {
-      // try the next mirror
+      // next mirror
     }
   }
-  if (!elements) throw new Error("Nearby places couldn’t be loaded — the map service is busy.");
+  if (!elements) throw new Error("Overpass unavailable");
 
-  const perCategory = new Map<PlaceCategory, number>();
-  const seenNames = new Set<string>();
-  const places: NearbyPlace[] = [];
-
-  const candidates = elements
+  return elements
     .map((el) => {
       const tags = el.tags ?? {};
-      const category = categorise(tags);
+      const entry = Object.entries(tags).find(([k, v]) => categorise(k, v));
       const lat = el.lat ?? el.center?.lat;
       const lon = el.lon ?? el.center?.lon;
-      if (!category || lat == null || lon == null) return null;
-      const name = tags.name ?? tags["name:en"] ?? defaultName(category, tags);
-      return { id: `${el.type}/${el.id}`, name, category, point: { lat, lng: lon }, km: distanceKm(point, { lat, lng: lon }) };
+      if (!entry || lat == null || lon == null) return null;
+      const category = categorise(entry[0], entry[1])!;
+      return {
+        id: `${el.type}/${el.id}`,
+        name: tags.name ?? tags["name:en"] ?? defaultName(category, entry[0], entry[1]),
+        category,
+        point: { lat, lng: lon },
+        km: distanceKm(point, { lat, lng: lon }),
+      };
     })
-    .filter((p): p is NearbyPlace => !!p)
-    .sort((a, b) => a.km - b.km);
-
-  for (const p of candidates) {
-    const nameKey = `${p.category}:${p.name.toLowerCase()}`;
-    if (seenNames.has(nameKey)) continue;
-    const count = perCategory.get(p.category) ?? 0;
-    if (count >= limitPerCategory) continue;
-    perCategory.set(p.category, count + 1);
-    seenNames.add(nameKey);
-    places.push(p);
-  }
-
-  cache.set(key, places);
-  return places;
+    .filter((p): p is NearbyPlace => !!p);
 }
 
-function defaultName(category: PlaceCategory, tags: Record<string, string>) {
-  if (tags.highway === "bus_stop") return "Bus stop";
-  if (tags.railway) return "Train station";
-  if (tags.natural === "beach") return "Beach";
-  if (tags.leisure === "park") return "Park";
-  return categoryLabel[category].replace(/s$/, "");
+// ------------------------------------------------------------ merge + cache
+
+function tidy(places: NearbyPlace[]): NearbyPlace[] {
+  const perCategory = new Map<PlaceCategory, number>();
+  const seen = new Set<string>();
+  const out: NearbyPlace[] = [];
+  for (const p of [...places].sort((a, b) => a.km - b.km)) {
+    const key = `${p.category}:${p.name.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    const cap = p.category === "transport" ? PER_CATEGORY_TRANSPORT : PER_CATEGORY;
+    const count = perCategory.get(p.category) ?? 0;
+    if (count >= cap) continue;
+    perCategory.set(p.category, count + 1);
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
+const memory = new Map<string, NearbyPlace[]>();
+
+function cacheKey(point: GeoPoint) {
+  return `zouza.places.${point.lat.toFixed(4)},${point.lng.toFixed(4)}`;
+}
+
+async function readCache(key: string): Promise<NearbyPlace[] | null> {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; places: NearbyPlace[] };
+    return Date.now() - parsed.at < CACHE_TTL_MS ? parsed.places : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(key: string, places: NearbyPlace[]) {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify({ at: Date.now(), places }));
+  } catch {
+    // cache is best-effort
+  }
+}
+
+/**
+ * Places around a point: supermarkets, shops, cafés, pharmacies, schools,
+ * transport, beaches, parks. Photon first, Overpass as a fallback, and a
+ * week-long on-device cache so a listing opened once works instantly and
+ * offline. Throws only when every source fails so the UI can offer a retry.
+ */
+export async function fetchNearbyPlaces(point: GeoPoint): Promise<NearbyPlace[]> {
+  const key = cacheKey(point);
+  const inMemory = memory.get(key);
+  if (inMemory) return inMemory;
+
+  const cached = await readCache(key);
+  if (cached) {
+    memory.set(key, cached);
+    return cached;
+  }
+
+  let places: NearbyPlace[] | null = null;
+  try {
+    places = await fromPhoton(point);
+  } catch {
+    try {
+      places = await fromOverpass(point);
+    } catch {
+      places = null;
+    }
+  }
+  if (!places) throw new Error("Nearby places couldn’t be loaded right now. Check your connection and try again.");
+
+  const result = tidy(places);
+  memory.set(key, result);
+  void writeCache(key, result);
+  return result;
 }
