@@ -12,7 +12,10 @@ interface RevealProps extends PropsWithChildren {
 /** Content eases up and fades in as it mounts, staggered by index — the soft arrival Airbnb's feeds have. */
 export function Reveal({ index = 0, style, children }: RevealProps) {
   return (
-    <Animated.View entering={FadeInDown.duration(motion.reveal).delay(Math.min(index, 6) * motion.stagger)} style={style}>
+    <Animated.View
+      entering={FadeInDown.springify().damping(motion.springWater.damping).stiffness(motion.springWater.stiffness).mass(motion.springWater.mass).delay(Math.min(index, 6) * motion.stagger)}
+      style={style}
+    >
       {children}
     </Animated.View>
   );

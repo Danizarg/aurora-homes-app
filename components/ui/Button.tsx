@@ -61,6 +61,7 @@ export function Button({
       onPress={onPress}
       disabled={isDisabled}
       pressedScale={0.96}
+      haptics
       style={[styles.base, sizeStyles[size], variantStyles[variant], isDisabled && styles.disabled, style]}
     >
       {variant === "primary" ? (

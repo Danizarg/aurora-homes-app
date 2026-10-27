@@ -82,6 +82,8 @@ export const motion = {
   springPress: { damping: 18, stiffness: 320, mass: 0.6 },
   /** Spring used on release: softer, with a hint of overshoot. */
   springRelease: { damping: 14, stiffness: 220, mass: 0.7 },
+  /** "Watery" spring: low stiffness, visible overshoot — hearts, tab underline, reveals. */
+  springWater: { damping: 11, stiffness: 150, mass: 0.9 },
   /** Fade/ease-in duration for content arriving on screen (ms). */
   reveal: 360,
   /** Stagger between neighbouring items (ms). */
@@ -143,6 +145,14 @@ export const shadow = {
     shadowRadius: 14,
     elevation: 8,
   },
+  // Photo cards: a soft pool of shadow under the image so it sits above the page
+  lift: {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 5,
+  },
   // Tab bar: replaces the hairline so the bar floats on the content
   tabBar: {
     shadowColor: "#000000",
@@ -155,6 +165,7 @@ export const shadow = {
 
 export const layout = {
   screenPadding: 24,
+  /** The tab bar floats over the content (glass), so scroll views pad their bottom by this much. */
   tabBarHeight: 84,
   buttonHeight: 48,
   controlHeight: 44,

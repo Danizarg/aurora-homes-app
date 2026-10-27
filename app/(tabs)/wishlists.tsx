@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, layout, radius, spacing, typography } from "../../constants/theme";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { getSavedListingIds, getStoredListings } from "../../lib/mock/storage";
 import { getListingById } from "../../lib/mock/listings";
@@ -72,7 +72,7 @@ function WishlistTile({ title, count, images, onPress }: { title: string; count:
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl + layout.tabBarHeight },
   title: { ...typography.display, color: colors.text, marginBottom: spacing.lg },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   tile: { width: "47.5%", marginBottom: spacing.lg },

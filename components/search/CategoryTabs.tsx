@@ -47,7 +47,7 @@ function Tab({ label, icon, active, onPress }: { label: string; icon: keyof type
   const lift = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
-    grow.set(withSpring(active ? 1 : 0, motion.springRelease));
+    grow.set(withSpring(active ? 1 : 0, motion.springWater));
     lift.set(withTiming(active ? 1 : 0, { duration: 200 }));
   }, [active, grow, lift]);
 
