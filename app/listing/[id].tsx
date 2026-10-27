@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Divider } from "../../components/ui/Divider";
+import { Collapsible } from "../../components/ui/Collapsible";
 import { Avatar } from "../../components/ui/Avatar";
 import { IconButton } from "../../components/ui/IconButton";
 import { PropertyAgentPanel } from "../../components/ai/PropertyAgentPanel";
@@ -109,7 +110,6 @@ export default function ListingDetailScreen() {
   const reviewCount = reviews.length || reviewCountFor(listing);
   const favourite = isGuestFavourite(listing);
   const amenities = amenitiesFor(listing);
-  const visibleAmenities = allAmenities ? amenities : amenities.slice(0, 6);
   const { amount, unit } = priceParts(listing);
   const kind = bookingKindFor(listing);
   const areaLabel = `${listing.address_area}, ${listing.city}`;
@@ -231,12 +231,20 @@ export default function ListingDetailScreen() {
 
           {/* Amenities */}
           <Text style={styles.sectionTitle}>What this place offers</Text>
-          {visibleAmenities.map((a) => (
+          {amenities.slice(0, 6).map((a) => (
             <View key={a.label} style={styles.amenityRow}>
               <Ionicons name={a.icon} size={24} color={colors.text} />
               <Text style={styles.amenityLabel}>{a.label}</Text>
             </View>
           ))}
+          <Collapsible open={allAmenities}>
+            {amenities.slice(6).map((a) => (
+              <View key={a.label} style={styles.amenityRow}>
+                <Ionicons name={a.icon} size={24} color={colors.text} />
+                <Text style={styles.amenityLabel}>{a.label}</Text>
+              </View>
+            ))}
+          </Collapsible>
           {amenities.length > 6 ? (
             <Button
               label={allAmenities ? "Show fewer amenities" : `Show all ${amenities.length} amenities`}
