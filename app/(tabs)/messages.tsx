@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { colors, radius, spacing, typography } from "../../constants/theme";
+import { colors, layout, radius, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Chip } from "../../components/ui/Chip";
 import { IconButton } from "../../components/ui/IconButton";
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   title: { ...typography.display, color: colors.text },
   headerActions: { flexDirection: "row", gap: spacing.sm },
   chips: { flexDirection: "row", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl + layout.tabBarHeight },
   row: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, gap: spacing.md },
   rowPressed: { opacity: 0.7 },
   avatarWrap: { width: 60, height: 60 },

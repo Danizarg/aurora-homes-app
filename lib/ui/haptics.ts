@@ -2,21 +2,36 @@ import { Platform } from "react-native";
 import * as Haptics from "expo-haptics";
 
 /**
- * Gentle haptics, Airbnb-style: a light tick on taps that change state
- * (save, select a date), a soft success on a sent request. No-ops on web
- * and swallow any device that can't vibrate.
+ * Haptics with intent, Airbnb-style:
+ * - select: the faintest tick, for choosing among options (chips, tabs, days)
+ * - light:  a soft tap, for pressing a button
+ * - medium: a clear thump, for saving a heart or confirming something
+ * - success / warning: system notification patterns for sent requests and errors
+ * No-ops on web; any device that can't vibrate is ignored.
  */
 export const haptic = {
-  light() {
-    if (Platform.OS === "web") return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-  },
   select() {
     if (Platform.OS === "web") return;
     Haptics.selectionAsync().catch(() => {});
   },
+  light() {
+    if (Platform.OS === "web") return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  },
+  medium() {
+    if (Platform.OS === "web") return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  },
+  heavy() {
+    if (Platform.OS === "web") return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+  },
   success() {
     if (Platform.OS === "web") return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  },
+  warning() {
+    if (Platform.OS === "web") return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
   },
 };

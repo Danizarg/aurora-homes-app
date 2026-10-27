@@ -30,7 +30,7 @@ export function PressableScale({ pressedScale = 0.97, haptics = false, onPressIn
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        scale.set(withSpring(1, motion.springRelease));
+        scale.set(withSpring(1, motion.springWater));
         onPressOut?.(e);
       }}
       style={[animatedStyle, typeof style === "function" ? undefined : style]}

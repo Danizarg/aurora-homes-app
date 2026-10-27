@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, motion, radius, spacing, typography } from "../../constants/theme";
+import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import type { Listing } from "../../types";
 import { Badge } from "../ui/Badge";
 import { PressableScale } from "../ui/PressableScale";
@@ -35,6 +35,7 @@ export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) 
 
   return (
     <PressableScale pressedScale={0.985} style={styles.card} onPress={() => router.push(`/listing/${listing.id}`)}>
+      <View style={styles.lift}>
       <View style={styles.media} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width > 0 ? (
           <ScrollView
@@ -68,6 +69,7 @@ export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) 
           </View>
         ) : null}
       </View>
+      </View>
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
@@ -100,6 +102,7 @@ export function CompactListingCard({ listing, saved, onToggleSave, width }: Comp
   const { amount, unit } = priceParts(listing);
   return (
     <PressableScale pressedScale={0.97} style={[styles.compact, { width }]} onPress={() => router.push(`/listing/${listing.id}`)}>
+      <View style={[styles.lift, { height: width }]}>
       <View style={[styles.media, { height: width }]}>
         <Image
           source={{ uri: listing.images[0]?.uri }}
@@ -111,6 +114,7 @@ export function CompactListingCard({ listing, saved, onToggleSave, width }: Comp
         <View style={styles.heartCompact}>
           <HeartButton saved={saved} onPress={onToggleSave ? () => onToggleSave(listing.id) : undefined} size={22} />
         </View>
+      </View>
       </View>
       <Text style={styles.compactTitle} numberOfLines={1}>{headlineFor(listing)}</Text>
       <Text style={styles.compactMeta} numberOfLines={1}>
@@ -127,8 +131,8 @@ export function HeartButton({ saved, onPress, size = 24 }: { saved?: boolean; on
 
   function handlePress() {
     if (!onPress) return;
-    scale.set(withSequence(withSpring(1.35, motion.springPress), withSpring(1, motion.springRelease)));
-    haptic.light();
+    scale.set(withSequence(withSpring(1.4, motion.springPress), withSpring(1, motion.springWater)));
+    haptic.medium();
     onPress();
   }
 
@@ -144,6 +148,7 @@ export function HeartButton({ saved, onPress, size = 24 }: { saved?: boolean; on
 
 const styles = StyleSheet.create({
   card: { marginBottom: spacing.lg + spacing.sm },
+  lift: { borderRadius: radius.md, backgroundColor: colors.white, ...shadow.lift },
   media: {
     width: "100%",
     aspectRatio: 1,

@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, layout, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Divider } from "../../components/ui/Divider";
 import { getBookingRequests, getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
@@ -117,7 +117,7 @@ function MenuRow({ item, last }: { item: MenuItem; last?: boolean }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl + layout.tabBarHeight },
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.lg },
   title: { ...typography.display, color: colors.text },
   identityCard: {

@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, layout, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Divider } from "../../components/ui/Divider";
@@ -79,7 +79,7 @@ export default function AiHubScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl + layout.tabBarHeight },
   title: { ...typography.display, color: colors.text, marginBottom: spacing.lg },
   hero: { backgroundColor: colors.white, borderRadius: radius.lg, overflow: "hidden", ...shadow.card },
   heroImage: { width: "100%", height: 200, backgroundColor: colors.bgSecondary },

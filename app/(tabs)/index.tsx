@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, layout, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { SearchPill } from "../../components/search/SearchPill";
 import { CategoryTabs, categories, type Category } from "../../components/search/CategoryTabs";
 import { FiltersSheet } from "../../components/search/FiltersSheet";
@@ -13,6 +13,7 @@ import { SectionHeader } from "../../components/ui/SectionHeader";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { IconButton } from "../../components/ui/IconButton";
 import { Reveal } from "../../components/ui/Reveal";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { PressableScale } from "../../components/ui/PressableScale";
 import { mockListings } from "../../lib/mock/listings";
 import { getSavedListingIds, toggleSavedListing } from "../../lib/mock/storage";
@@ -168,6 +169,7 @@ export default function ExploreScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.homeContent}>
+        <Animated.View key={category} entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)}>
         {sections.map((section, sectionIndex) => (
           <Reveal key={section.key} index={sectionIndex} style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -192,6 +194,7 @@ export default function ExploreScreen() {
             <EmptyState title="Nothing here yet" subtitle="There are no homes in this category right now." />
           </View>
         ) : null}
+        </Animated.View>
 
         <PressableScale pressedScale={0.985} style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
           <Image source={{ uri: "https://picsum.photos/seed/zouza-host/600/400" }} style={styles.hostImage} contentFit="cover" transition={motion.image} />
@@ -210,7 +213,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.divider },
   pillRow: { flexDirection: "row", paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
-  homeContent: { paddingTop: spacing.lg, paddingBottom: spacing.xxl },
+  homeContent: { paddingTop: spacing.lg, paddingBottom: spacing.xxl + layout.tabBarHeight },
   section: { marginBottom: spacing.lg + spacing.sm },
   sectionHeader: { paddingHorizontal: spacing.lg, marginBottom: -spacing.xs },
   carousel: { paddingHorizontal: spacing.lg },
@@ -234,10 +237,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text, alignItems: "center", justifyContent: "center",
   },
   filterBadgeText: { color: colors.white, fontSize: 10, fontWeight: "700" },
-  resultsContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl },
+  resultsContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl + layout.tabBarHeight },
   resultsCount: { ...typography.smallMedium, color: colors.text, textAlign: "center", marginBottom: spacing.md },
   mapButton: {
-    position: "absolute", bottom: spacing.lg, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: spacing.sm,
+    position: "absolute", bottom: spacing.lg + layout.tabBarHeight, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: spacing.sm,
     backgroundColor: colors.text, borderRadius: radius.pill, paddingVertical: spacing.sm + 4, paddingHorizontal: spacing.md + 4, ...shadow.card,
   },
   mapButtonText: { ...typography.smallBold, color: colors.white },

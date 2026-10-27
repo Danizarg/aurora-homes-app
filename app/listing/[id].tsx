@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
+import { BlurView } from "expo-blur";
+import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
+import { haptic } from "../../lib/ui/haptics";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -63,6 +66,25 @@ export default function ListingDetailScreen() {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [allAmenities, setAllAmenities] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.set(e.contentOffset.y);
+  });
+  const galleryHeight = Math.round(width * 0.92);
+  // Pull down: the photo stretches and stays pinned (watery overscroll). Scroll up: it drifts at half speed.
+  const heroStyle = useAnimatedStyle(() => {
+    const y = scrollY.get();
+    const scale = interpolate(y, [-galleryHeight, 0], [2, 1], Extrapolation.CLAMP);
+    const translateY = y < 0 ? y / 2 : y * 0.45;
+    return { transform: [{ translateY }, { scale }] };
+  });
+  // A white header with the title fades in once the photo has scrolled away.
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), [galleryHeight - 140, galleryHeight - 70], [0, 1], Extrapolation.CLAMP),
+  }));
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), [galleryHeight - 140, galleryHeight - 90], [1, 0], Extrapolation.CLAMP),
+  }));
   const [nearby, setNearby] = useState<NearbyPlace[]>([]);
   const onPlaces = useCallback((places: NearbyPlace[]) => setNearby(places.slice(0, 12)), []);
   const center = useMemo(() => (listing ? coordsFor(listing) : null), [listing]);
@@ -89,7 +111,6 @@ export default function ListingDetailScreen() {
   const amenities = amenitiesFor(listing);
   const visibleAmenities = allAmenities ? amenities : amenities.slice(0, 6);
   const { amount, unit } = priceParts(listing);
-  const galleryHeight = Math.round(width * 0.92);
   const kind = bookingKindFor(listing);
   const areaLabel = `${listing.address_area}, ${listing.city}`;
 
@@ -99,15 +120,17 @@ export default function ListingDetailScreen() {
   }
 
   async function toggleSave() {
+    haptic.medium();
     const ids = await toggleSavedListing(listing!.id);
     setSaved(ids.includes(listing!.id));
   }
 
   return (
     <View style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Gallery */}
-        <View style={{ height: galleryHeight }}>
+        <View style={{ height: galleryHeight, overflow: "visible" }}>
+          <Animated.View style={[{ height: galleryHeight }, heroStyle]}>
           <ScrollView
             horizontal
             pagingEnabled
@@ -118,13 +141,14 @@ export default function ListingDetailScreen() {
               <Image key={image.id} source={{ uri: image.uri }} style={{ width, height: galleryHeight }} contentFit="cover" transition={motion.image} />
             ))}
           </ScrollView>
-          <View style={[styles.galleryControls, { top: insets.top + spacing.sm }]}>
+          </Animated.View>
+          <Animated.View style={[styles.galleryControls, { top: insets.top + spacing.sm }, overlayStyle]}>
             <IconButton icon="chevron-back" variant="overlay" onPress={() => router.back()} />
             <View style={styles.galleryRight}>
               <IconButton icon="share-outline" variant="overlay" />
               <IconButton icon={saved ? "heart" : "heart-outline"} variant="overlay" color={saved ? colors.primary : colors.text} onPress={toggleSave} />
             </View>
-          </View>
+          </Animated.View>
           <View style={styles.galleryCounter}>
             <Text style={styles.galleryCounterText}>{galleryIndex + 1} / {listing.images.length}</Text>
           </View>
@@ -317,10 +341,23 @@ export default function ListingDetailScreen() {
             A standard contract template becomes available once a viewing is confirmed. Zouza does not provide legal advice — review it with a professional before signing.
           </Text>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* Sticky bottom bar */}
+      {/* Collapsed header: appears as the photo scrolls away */}
+      <Animated.View style={[styles.collapsedHeader, { paddingTop: insets.top }, headerStyle]} pointerEvents="box-none">
+        <BlurView tint="light" intensity={60} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+        <View style={styles.collapsedTint} />
+        <View style={styles.collapsedRow}>
+          <IconButton icon="chevron-back" variant="plain" size={40} onPress={() => router.back()} />
+          <Text style={styles.collapsedTitle} numberOfLines={1}>{listing.title}</Text>
+          <IconButton icon={saved ? "heart" : "heart-outline"} variant="plain" size={40} color={saved ? colors.primary : colors.text} onPress={toggleSave} />
+        </View>
+      </Animated.View>
+
+      {/* Sticky bottom bar (glass) */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <BlurView tint="light" intensity={60} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+        <View style={styles.bottomTint} />
         <View style={{ flex: 1 }}>
           <Text style={styles.barPrice}>
             <Text style={styles.barPriceAmount}>{amount}</Text>
@@ -429,8 +466,13 @@ const styles = StyleSheet.create({
     position: "absolute", left: 0, right: 0, bottom: 0,
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: spacing.lg, paddingTop: spacing.md,
-    backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.divider, ...shadow.bar,
+    backgroundColor: "transparent", overflow: "hidden", ...shadow.bar,
   },
+  bottomTint: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.78)", borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.04)" },
+  collapsedHeader: { position: "absolute", top: 0, left: 0, right: 0, overflow: "hidden" },
+  collapsedTint: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.82)", borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.05)" },
+  collapsedRow: { height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.sm, gap: spacing.sm },
+  collapsedTitle: { flex: 1, textAlign: "center", ...typography.h4, color: colors.text },
   barPrice: {},
   barPriceAmount: { ...typography.bodyBold, color: colors.text },
   barPriceUnit: { ...typography.body, color: colors.text },
