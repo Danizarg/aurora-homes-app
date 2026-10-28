@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, layout, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Divider } from "../../components/ui/Divider";
+import { useDiscovery } from "../../lib/store/discovery";
 import { getBookingRequests, getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
 
 type MenuItem = { icon: keyof typeof Ionicons.glyphMap; label: string; route: string };
@@ -29,6 +30,9 @@ export default function ProfileScreen() {
   const [savedCount, setSavedCount] = useState(0);
   const [myListingsCount, setMyListingsCount] = useState(0);
   const [bookingsCount, setBookingsCount] = useState(0);
+  const voice = useDiscovery((s) => s.voice);
+  const setVoice = useDiscovery((s) => s.setVoice);
+  const setOnboardingDone = useDiscovery((s) => s.setOnboardingDone);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,6 +74,20 @@ export default function ProfileScreen() {
         {settings.map((item, i) => (
           <MenuRow key={item.label} item={item} last={i === settings.length - 1} />
         ))}
+
+        <Divider gap={spacing.md} />
+
+        <Text style={styles.sectionTitle}>Suza</Text>
+        <View style={styles.menuRow}>
+          <Ionicons name="volume-high-outline" size={24} color={colors.text} />
+          <Text style={styles.menuLabel}>Suza speaks her replies</Text>
+          <Switch value={voice.speak} onValueChange={(v) => setVoice({ speak: v })} trackColor={{ true: colors.text, false: colors.border }} thumbColor={colors.white} />
+        </View>
+        <Pressable style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={() => { setVoice({ replayIntro: true }); setOnboardingDone(false); router.replace("/intro"); }}>
+          <Ionicons name="earth-outline" size={24} color={colors.text} />
+          <Text style={styles.menuLabel}>Replay the Earth intro</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.text} />
+        </Pressable>
 
         <Divider gap={spacing.md} />
 

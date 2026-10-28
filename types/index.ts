@@ -61,6 +61,10 @@ export interface Listing {
   /** Approximate coordinates of the area (never the exact door). Falls back to the city when missing. */
   lat?: number;
   lng?: number;
+  /** True when lat/lng came from a city/area lookup rather than the owner's address. */
+  location_approximate?: boolean;
+  /** Rental category chosen by the owner. */
+  rental_duration?: "short" | "seasonal" | "long";
   status: ListingStatus;
   images: ListingImage[];
   faq: FaqItem[];

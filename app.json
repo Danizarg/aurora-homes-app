@@ -44,11 +44,19 @@
       "expo-image",
       "expo-status-bar",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Zouza uses the microphone so you can talk to Suza, your real estate assistant."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Zouza uses your location to show how to get to a home: flights, driving time and directions."
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-asset"
     ],
     "extra": {
       "router": {}

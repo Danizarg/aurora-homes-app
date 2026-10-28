@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
@@ -29,6 +29,8 @@ import {
 } from "../../lib/ai/service";
 import { generateListing } from "../../lib/ai/suzi";
 import { lookupCoords } from "../../lib/geo/cities";
+import { geocode } from "../../lib/geo/geocode";
+import { invalidateRemoteListings } from "../../lib/search/service";
 import type { AiGeneratedContent, Listing } from "../../types";
 import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
@@ -118,6 +120,11 @@ const stepOrder: WizardStep[] = ["photos", "address", "price", "chat", "generati
 
 export default function AiListingBuilder() {
   const insets = useSafeAreaInsets();
+  // Suza (or the intent sheet) can arrive with the purpose already decided.
+  const params = useLocalSearchParams<{ purpose?: string; duration?: string; from?: string }>();
+  const presetPositioning: Positioning | undefined =
+    params.purpose === "sell" ? "sale" : params.purpose === "rent_out" ? (params.duration === "short" ? "rent_holiday" : "rent_long") : undefined;
+  const presetDuration = params.duration === "short" || params.duration === "seasonal" || params.duration === "long" ? params.duration : undefined;
   const [step, setStep] = useState<WizardStep>("photos");
   const [images, setImages] = useState<string[]>([]);
   const [address, setAddress] = useState("");
@@ -126,7 +133,8 @@ export default function AiListingBuilder() {
   const [detected, setDetected] = useState<DetectedFeatures | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<ChatAnswers>({});
+  const [answers, setAnswers] = useState<ChatAnswers>(presetPositioning ? { positioning: presetPositioning } : {});
+  const [geo, setGeo] = useState<{ lat: number; lng: number; approximate: boolean } | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
 
   const [generated, setGenerated] = useState<AiGeneratedContent | null>(null);
@@ -166,6 +174,11 @@ export default function AiListingBuilder() {
   }
 
   function askNext(index: number) {
+    if (index < questions.length && questions[index].field === "positioning" && presetPositioning) {
+      askNext(index + 1);
+      setQuestionIndex(index + 1);
+      return;
+    }
     if (index >= questions.length) {
       setMessages((prev) => [
         ...prev,
@@ -279,8 +292,10 @@ export default function AiListingBuilder() {
       furnished: input.furnished,
       verified_owner: false,
       verified_property: false,
-      lat: lookupCoords(input.addressArea, input.city)?.lat,
-      lng: lookupCoords(input.addressArea, input.city)?.lng,
+      lat: geo?.lat ?? lookupCoords(input.addressArea, input.city)?.lat,
+      lng: geo?.lng ?? lookupCoords(input.addressArea, input.city)?.lng,
+      location_approximate: geo ? geo.approximate : true,
+      rental_duration: input.intent === "rent_out" ? presetDuration ?? (input.positioning === "rent_holiday" ? "short" : "long") : undefined,
       status: "published",
       images: imageUris.map((uri, i) => ({ id: `${id}-img-${i}`, listing_id: id, uri, position: i })),
       faq: generated?.faq ?? [],
@@ -300,6 +315,7 @@ export default function AiListingBuilder() {
         const draftListing = buildListing(tempId, ownerId, uploadedUrls);
         const supabaseId = await createListingInSupabase(draftListing, ownerId);
         if (supabaseId) {
+          invalidateRemoteListings();
           setPublishedId(supabaseId);
           setPublishedToSupabase(true);
           setStep("success");
@@ -315,6 +331,7 @@ export default function AiListingBuilder() {
     const id = newId("local-");
     const listing = buildListing(id, "me", images);
     await addStoredListing(listing);
+    invalidateRemoteListings();
     setPublishedId(id);
     setStep("success");
     setPublishing(false);
@@ -331,7 +348,21 @@ export default function AiListingBuilder() {
 
   const footer: Record<string, { label: string; disabled?: boolean; onPress: () => void }> = {
     photos: { label: "Next", disabled: images.length === 0, onPress: () => setStep("address") },
-    address: { label: "Next", disabled: !address.trim(), onPress: () => setStep("price") },
+    address: {
+      label: "Next",
+      disabled: !address.trim(),
+      onPress: () => {
+        setStep("price");
+        // Resolve the typed area to real coordinates in the background; fall back to the city table and flag it.
+        geocode(address).then((t) => {
+          if (t) setGeo({ lat: t.point.lat, lng: t.point.lng, approximate: t.source === "local" });
+          else {
+            const c = lookupCoords(addressArea, city);
+            setGeo(c ? { lat: c.lat, lng: c.lng, approximate: true } : null);
+          }
+        });
+      },
+    },
     price: { label: "Let Suzi take over", onPress: startChat },
     review: { label: "Next", onPress: () => setStep("preview") },
     preview: { label: "Publish listing", onPress: publish },
@@ -583,7 +614,8 @@ export default function AiListingBuilder() {
             {publishedToSupabase ? "Saved to Supabase." : "Saved locally on this device (mock storage)."}
           </Text>
           <Button label="View listing" style={{ marginTop: spacing.xl, alignSelf: "stretch" }} onPress={() => publishedId && router.replace(`/listing/${publishedId}`)} />
-          <Button label="Back to Explore" variant="outline" style={{ marginTop: spacing.sm, alignSelf: "stretch" }} onPress={() => router.replace("/(tabs)")} />
+          <Button label="See it on the map" variant="outline" style={{ marginTop: spacing.sm, alignSelf: "stretch" }} onPress={() => router.replace("/(tabs)")} />
+          {geo?.approximate ? <Text style={styles.centeredBody}>The pin uses the area’s centre until you add a precise address.</Text> : null}
         </View>
       )}
 
