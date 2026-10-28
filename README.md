@@ -60,49 +60,106 @@ those values re-skins the accent across the app. The brand mark is
 `components/brand/ZMark.tsx` — the same Z mark as the website. Never a
 sparkles icon for Zouza or Suzi.
 
-## Booking, maps and travel
+## Suza AI and the map-first experience
 
-- **Calendar booking** — every listing's sticky bar opens an Airbnb-style
-  calendar (`components/booking`): stays pick a date range, rentals a
-  move-in day, sales a viewing day. A request is stored on the device
-  (`lib/mock/storage.ts`), blocks those days for everyone, opens a
-  conversation with the owner, and shows under Profile → Trips & viewings
-  and on the owner dashboard, where it can be confirmed or declined.
-- **No demo chats** — the inbox only contains threads started from a
-  booking request or "Message owner". Nothing is seeded.
-- **Where you'll be** — a map of the approximate area (react-native-maps,
-  bundled in Expo Go; an OpenStreetMap embed on the web) with the nearest
-  airport and nearby supermarkets, shops, cafés, pharmacies, transport,
-  beaches and parks from OpenStreetMap's Overpass API (`lib/geo/places.ts`;
-  free, no key, shows a retry when the mirrors are busy).
-- **How to get there** — with the traveller's permission (`expo-location`)
-  the listing computes the nearest airports at both ends, flight time,
-  driving time, and links out to Google Flights, Skyscanner and the
-  platform's maps app for directions (`lib/geo/travel.ts`). Zouza never
-  sells travel.
-- **Map view** — the "Map" button on results opens the earth, flies to the
-  homes and shows them as price pins with a card carousel (`app/map.tsx`).
+Opening the app feels like exploring the planet with a personal agent:
+
+- **Earth intro** (`app/intro.tsx`, `components/globe/Globe.tsx`) — a real 3D
+  globe rendered with raw WebGL through `expo-gl` (NASA Blue Marble texture,
+  sun, atmosphere, stars). It spins, turns to the visitor's city (with
+  location permission; otherwise Marbella, clearly labelled as a demo
+  destination) and dollies in; the native map then continues the fly-in from
+  country to city. Skip is always available, reduced-motion settings shorten
+  the sequence, and Profile → *Replay the Earth intro* runs it again.
+- **Suza greets and asks** what you're here for — buy, rent, short stay, or
+  list your own property — spoken aloud (device speech synthesis via
+  `expo-speech`) and answerable by tap, text, or voice where available.
+- **The map is home** (`app/(tabs)/index.tsx`, `components/discovery/*`):
+  every published listing with real coordinates is a price pill; dense areas
+  cluster (`supercluster`) and split as you zoom; tapping a pin slides up a
+  preview card; panning updates the search viewport. Listings without their
+  own coordinates stay in list mode and are flagged for location completion.
+  The **Map / List** toggle switches to the Airbnb-style list over the same
+  results. Web shows list mode (react-native-maps has no web renderer).
+- **One search** (`lib/search/service.ts`, `types/search.ts`): typed
+  `SearchCriteria` (intent, bounds, destination, budget, rooms, amenities,
+  pets, dates, distance constraints…) drive the map, the list, the filters and
+  Suza alike. Geographic constraints are real: distance to the coast and to
+  beaches, supermarkets, schools, transport, gyms and restaurants comes from
+  OpenStreetMap via Photon (`lib/geo/proximity.ts`), the airport from a
+  bundled table; "within 15 minutes of X" is converted to a straight-line
+  radius and Suza says so (no routing API). Unknown distances are never
+  treated as near or far. Demo listings are flagged in results.
+- **Geocoding** (`lib/geo/geocode.ts`): worldwide place search via Photon
+  (OpenStreetMap, no key) with a small offline city table marked `source:
+  "local"`. Searching "Marbella" flies the map there; "Puerto Banús" zooms
+  further in.
+- **Suza's brain** (`lib/suza/*`): a deterministic parser turns sentences
+  like *"two-bedroom apartment near the ocean in Marbella under €2,000 a
+  month, I have a dog"* into criteria, geocodes the place, and emits typed,
+  validated actions (`setTarget`, `setFilters`, `moveMap`, `openListing`,
+  `openUpload`…) that the executor applies to the store, the map and
+  navigation. She asks one relevant question at a time, never repeats one,
+  and stops when you say "just show me everything". An optional server
+  planner (`POST /api/suza/plan`, enabled with
+  `EXPO_PUBLIC_SUZA_REMOTE_PLANNER=true`) can replace the parser; its output
+  is validated the same way and any failure falls back to the local planner.
+- **Voice** (`lib/voice/*`): replies are spoken with `expo-speech`
+  (mute/stop in the panel). Voice input uses the browser's speech recognition
+  on the web, and on iOS/Android records with `expo-audio` and posts the clip
+  to `POST /api/suza/transcribe` (enable with `EXPO_PUBLIC_SUZA_TRANSCRIBE=true`
+  once the endpoint exists). Without it the mic is disabled with an
+  explanation and typing works fully. No prerecorded audio is ever used.
+- **Owners**: "sell" / "rent out" (from Suza, the intro or the intent chip)
+  opens the existing List with Suzi builder with the purpose pre-set; the
+  typed area is geocoded for real coordinates (flagged approximate when only
+  the city is known) and the published listing appears on the map and list.
+
+### Server endpoints the app can use (all optional)
+
+| Endpoint | Enabled by | Request | Response |
+|---|---|---|---|
+| `POST /api/suza/plan` | `EXPO_PUBLIC_SUZA_REMOTE_PLANNER=true` | `{ message, context: BrainContext }` | `{ reply, actions: SuzaAction[], question? }` |
+| `POST /api/suza/transcribe` | `EXPO_PUBLIC_SUZA_TRANSCRIBE=true` | multipart `audio`, `language` | `{ text }` |
+
+Keys stay on the server; the app bundle holds none.
+
+### Database
+
+`supabase/migrations/20261028_geo_search.sql` adds `lat`/`lng` (for
+projects created before they existed), a `(lat, lng)` index on published
+listings, `rental_duration` and `location_approximate`.
 
 ## Project structure
 
 ```
 app/                    Expo Router screens
-  (tabs)/                Explore, Wishlists, Suzi, Messages, Profile
-  search-modal.tsx        "Where to?" search sheet (destination, type, budget)
+  intro.tsx               Earth intro + Suza's first question
+  (tabs)/                Discovery map (home), Wishlists, Suzi, Messages, Profile
+  search-modal.tsx        "Where to?" — worldwide geocoding, intent, budget
   wishlists/saved.tsx     Saved homes list
   listing/[id].tsx        Listing detail + Ask Suzi
   create-listing/          List with Suzi (photos → address → price → chat → publish)
   messages/[id].tsx, auth/, legal/, pricing, trust, contact, rent-out, sell
 components/
   brand/ZMark             The brand mark
+  globe/                  WebGL Earth (expo-gl)
+  discovery/              Map, clusters, preview card, bar, list, filters, intent
+  suza/                   Orb + conversation sheet
   ui/                     Button, Card, Chip, Badge, TextField, ScreenHeader, Divider…
   search/                 SearchPill, CategoryTabs, FiltersSheet
   listings/ListingCard    Feed card + CompactListingCard for carousels
   host/HostLanding        Rent out / Sell landing pages
   ai/PropertyAgentPanel   Per-listing Suzi chat
 lib/
+  suza/                   Parser, question policy, planner, typed actions, executor
+  voice/                  Text-to-speech, speech-to-text (web + native)
+  search/                 Shared search service + sync hook
+  store/discovery.ts      Unified state (intent, criteria, camera, results, chat)
+  globe/                  Sphere geometry, shaders, matrices
   ai/suzi.ts              Real Suzi via zouza.ai (with fallback)
   ai/service.ts           Deterministic layer
+  geo/                    Geocoding, proximity, bounds, places, airports, travel
   listings/               Presentation helpers (price, rating, headline) + filtering
   supabase/, auth/, mock/
 constants/theme.ts        Airbnb-style tokens with the Zouza brand accent

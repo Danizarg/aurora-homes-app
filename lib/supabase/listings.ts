@@ -72,6 +72,8 @@ export async function createListingInSupabase(listing: Listing, ownerId: string)
       faq: listing.faq,
       lat: listing.lat ?? null,
       lng: listing.lng ?? null,
+      location_approximate: listing.location_approximate ?? false,
+      rental_duration: listing.rental_duration ?? null,
       verified_owner: listing.verified_owner,
       verified_property: listing.verified_property,
       status: listing.status,
@@ -119,6 +121,8 @@ interface ListingRow {
   faq: Listing["faq"];
   lat: number | null;
   lng: number | null;
+  location_approximate: boolean | null;
+  rental_duration: Listing["rental_duration"] | null;
   verified_owner: boolean;
   verified_property: boolean;
   last_verified_at: string | null;
@@ -163,6 +167,8 @@ function mapRow(row: ListingRow): Listing {
     faq: row.faq ?? [],
     lat: row.lat ?? undefined,
     lng: row.lng ?? undefined,
+    location_approximate: row.location_approximate ?? undefined,
+    rental_duration: row.rental_duration ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
