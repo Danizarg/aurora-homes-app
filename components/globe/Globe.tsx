@@ -22,7 +22,9 @@ export interface GlobeProps {
 
 const FOCUS_MS = 2400;
 const ZOOM_MS = 3200;
-const FAR_DISTANCE = 3.4;
+const FOV_DEG = 34;
+/** The idle globe spans this fraction of the screen's narrower side, with space around it. */
+const GLOBE_SCREEN_FRACTION = 0.8;
 // Stop at country/region scale: the texture can't show streets, and the native map continues the fly-in from here.
 const NEAR_DISTANCE = 1.42;
 
@@ -104,7 +106,11 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
 
     const width = gl.drawingBufferWidth;
     const height = gl.drawingBufferHeight;
-    const projection = perspective((34 * Math.PI) / 180, width / height, 0.05, 100);
+    const projection = perspective((FOV_DEG * Math.PI) / 180, width / height, 0.05, 100);
+    // Camera distance at which the unit sphere fills GLOBE_SCREEN_FRACTION of the narrower screen side.
+    const halfV = (FOV_DEG * Math.PI) / 360;
+    const halfH = Math.atan(Math.tan(halfV) * (width / height));
+    const FAR_DISTANCE = 1 / Math.sin(GLOBE_SCREEN_FRACTION * Math.min(halfH, halfV));
     const lightDir = [-0.55, 0.35, 0.75];
 
     let yaw = 0.9; // radians; spins while idle
