@@ -268,7 +268,7 @@ export default function IntroScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#04050d" },
+  screen: { flex: 1, backgroundColor: "#0d214d" },
   status: { position: "absolute", left: spacing.lg, right: spacing.lg, alignItems: "center" },
   statusText: { ...typography.bodyMedium, color: "rgba(255,255,255,0.9)", textAlign: "center" },
   statusSub: { ...typography.micro, color: "rgba(255,255,255,0.6)", textAlign: "center", marginTop: spacing.xs },

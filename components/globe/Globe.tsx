@@ -26,12 +26,12 @@ const FOV_DEG = 34;
 /** The idle globe spans this fraction of the screen's narrower side, with space around it. */
 const GLOBE_SCREEN_FRACTION = 0.8;
 // Stop at country/region scale: the texture can't show streets, and the native map continues the fly-in from here.
-const NEAR_DISTANCE = 1.42;
+const NEAR_DISTANCE = 2.05;
 
 /**
  * A real 3D Earth rendered with raw WebGL through expo-gl (runs in Expo Go,
- * iOS, Android and the web). NASA Blue Marble texture, directional sun,
- * atmospheric rim scattering, additive halo, twinkling stars. The globe
+ * iOS, Android and the web). Flat Duolingo-coloured Earth texture, toon
+ * lighting, dark outline rim, soft halo, twinkling stars. The globe
  * spins slowly, then yaws/pitches so the target faces the camera, then the
  * camera dollies in until the city fills the view — one continuous shot.
  */
@@ -80,17 +80,17 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
     const idxBuf = buffer(sphere.indices, gl.ELEMENT_ARRAY_BUFFER);
     const starBuf = buffer(stars, gl.ARRAY_BUFFER);
 
-    // Texture: NASA Blue Marble (public domain), bundled at 2048×1024.
+    // Texture: flat Duolingo-coloured Earth (4096×2048), built from NASA's Blue Marble by scripts/earth-texture/build.py.
     const texture = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // A 1×1 deep-blue pixel so the first frames aren't black while the image decodes.
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([14, 32, 78, 255]));
+    // A 1×1 sea-blue pixel so the first frames match while the image decodes.
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([28, 176, 246, 255]));
     try {
-      const asset = Asset.fromModule(require("../../assets/earth/earth-2048.jpg"));
+      const asset = Asset.fromModule(require("../../assets/earth/earth-flat-4096.png"));
       await asset.downloadAsync();
       gl.bindTexture(gl.TEXTURE_2D, texture);
       if (Platform.OS === "web") {
@@ -100,6 +100,7 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
       } else {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, asset as unknown as ImageData);
       }
+      gl.generateMipmap(gl.TEXTURE_2D);
     } catch {
       // Keep the placeholder colour; the animation still runs.
     }
@@ -169,7 +170,8 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
       const model = multiply(rotationX(pitch), rotationY(yaw));
 
       gl.viewport(0, 0, width, height);
-      gl.clearColor(0.015, 0.02, 0.05, 1);
+      // Deep friendly navy rather than black.
+      gl.clearColor(0.05, 0.13, 0.30, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.enable(gl.DEPTH_TEST);
 
