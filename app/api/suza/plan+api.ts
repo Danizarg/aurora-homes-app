@@ -20,54 +20,44 @@ import type { SearchTarget } from "../../../types/search";
 
 const MODEL = process.env.SUZA_PLAN_MODEL || "claude-opus-5-5";
 
+// Kept deliberately flat: the API compiles this into a grammar, and a nested
+// "array of action objects with many optional fields" was rejected as too large.
 const Plan = z.object({
   reply: z.string().describe("What Suza says, one to two short friendly sentences. Mention anything you could not do."),
   locationQuery: z.string().nullable().describe("A place the user named (city, area, landmark, address), to be geocoded. null if none."),
-  actions: z
-    .array(
-      z.object({
-        type: z.enum(["setIntent", "clearTarget", "setFilters", "clearFilters", "zoom", "selectListing", "openListing", "openUpload", "setViewMode", "showSaved", "saveSearch", "showAll"]),
-        intent: z.enum(["buy", "rent", "stay", "list"]).nullable(),
-        patch: z
-          .object({
-            propertyTypes: z.array(z.enum(["apartment", "villa", "townhouse", "studio", "loft", "house"])).nullable(),
-            budgetMin: z.number().nullable(),
-            budgetMax: z.number().nullable(),
-            bedroomsMin: z.number().nullable(),
-            bathroomsMin: z.number().nullable(),
-            areaMin: z.number().nullable(),
-            areaMax: z.number().nullable(),
-            pool: z.boolean().nullable(),
-            garage: z.boolean().nullable(),
-            furnished: z.boolean().nullable(),
-            seaView: z.boolean().nullable(),
-            pets: z.boolean().nullable(),
-            verifiedOnly: z.boolean().nullable(),
-            guests: z.number().nullable(),
-            rentalDuration: z.enum(["short", "seasonal", "long"]).nullable(),
-            dateStart: z.string().nullable().describe("ISO date"),
-            dateEnd: z.string().nullable().describe("ISO date"),
-            distance: z
-              .array(
-                z.object({
-                  to: z.enum(["sea", "beach", "airport", "school", "supermarket", "gym", "restaurants", "transport", "hospital", "center"]),
-                  maxKm: z.number().describe("Straight-line km. Convert minutes: walking ≈ 0.08 km/min, driving ≈ 0.6 km/min, and say so in the reply."),
-                })
-              )
-              .nullable(),
-          })
-          .nullable(),
-        factor: z.number().nullable().describe("zoom: >1 zooms in, <1 zooms out"),
-        id: z.string().nullable().describe("selectListing/openListing: one of context.resultIds or the selected listing"),
-        purpose: z.enum(["sell", "rent_out"]).nullable(),
-        duration: z.enum(["short", "seasonal", "long"]).nullable(),
-        mode: z.enum(["map", "list"]).nullable(),
-      })
-    )
-    .describe("Typed actions to apply, in order. Only include fields relevant to each type; others null."),
+  intent: z.enum(["buy", "rent", "stay", "list"]).nullable().describe("Only when the user states or changes it."),
+  filters: z
+    .object({
+      propertyTypes: z.array(z.string()).nullable().describe("apartment, villa, townhouse, studio, loft, house"),
+      budgetMin: z.number().nullable(),
+      budgetMax: z.number().nullable(),
+      bedroomsMin: z.number().nullable(),
+      bathroomsMin: z.number().nullable(),
+      pool: z.boolean().nullable(),
+      garage: z.boolean().nullable(),
+      furnished: z.boolean().nullable(),
+      seaView: z.boolean().nullable(),
+      pets: z.boolean().nullable(),
+      guests: z.number().nullable(),
+      rentalDuration: z.string().nullable().describe("short, seasonal or long"),
+      dateStart: z.string().nullable().describe("ISO date"),
+      dateEnd: z.string().nullable().describe("ISO date"),
+      nearKind: z.string().nullable().describe("sea, beach, airport, school, supermarket, gym, restaurants, transport, hospital or center"),
+      nearKm: z.number().nullable().describe("Straight-line km for nearKind. Convert minutes: walking ≈ 0.08 km/min, driving ≈ 0.6 km/min, and say so in the reply."),
+    })
+    .nullable()
+    .describe("Filters to merge into the search; null when nothing changes."),
+  clearFilters: z.boolean().describe("true for 'show me everything', 'start over', 'clear filters'."),
+  showAll: z.boolean().describe("true when the user wants no more questions."),
+  openUploadPurpose: z.enum(["sell", "rent_out"]).nullable().describe("When the user wants to list their own property."),
+  openUploadDuration: z.enum(["short", "seasonal", "long"]).nullable(),
+  openListingId: z.string().nullable().describe("One of context.resultIds, or context.selectedListingId, when the user asks to open one."),
+  viewMode: z.enum(["map", "list"]).nullable(),
+  zoom: z.number().nullable().describe(">1 zooms in, <1 zooms out"),
+  showSaved: z.boolean(),
   question: z
     .object({
-      key: z.string().describe("Stable id: intent, location, budget, bedrooms, pets, movein, type, purpose, dates, guests"),
+      key: z.string().describe("Stable id: intent, location, budget, bedrooms, pets, movein, duration, type, purpose, dates, guests"),
       text: z.string(),
       options: z.array(z.object({ label: z.string(), value: z.string() })).nullable(),
     })
@@ -80,10 +70,10 @@ const SYSTEM = [
   "You turn what the user says into typed actions on a map-first property search and a short spoken reply.",
   "Rules:",
   "- Extract only what was said. Never invent listings, places, coordinates, prices or availability.",
-  "- Put place names in locationQuery; the server geocodes them. Keep existing filters unless the user changes or clears them (setFilters patches merge).",
-  "- \"show me everything\" / \"just show all\" means actions [clearFilters, showAll] and no question.",
-  "- Selling or renting out their own property means setIntent list + openUpload with purpose (and duration if said).",
-  "- Distances are straight-line. Never present them as walking or driving times.",
+  "- Put place names in locationQuery; the server geocodes them. Keep existing filters unless the user changes or clears them (filters merge).",
+  "- \"show me everything\" / \"just show all\" means clearFilters true, showAll true and no question.",
+  "- Selling or renting out their own property means intent list + openUploadPurpose (and openUploadDuration if said).",
+  "- Distances are straight-line. Never present them as walking or driving times. \"Near the sea / beach / a school\" with no distance means nearKind with nearKm 2.",
   "- Ask at most one follow-up question, only when it would materially narrow the search, and never a key already in context.asked. Offer 2-4 short options when natural.",
   "- Replies are spoken aloud: warm, concise, no markdown, no lists.",
 ].join("\n");
@@ -150,19 +140,22 @@ export async function POST(request: Request) {
     if (response.stop_reason === "refusal" || !response.parsed_output) return json({ error: "No plan." }, 502);
     const out = response.parsed_output;
 
-    const actions: SuzaAction[] = validateActions(
-      out.actions.map((a) => {
-        const base: Record<string, unknown> = { type: a.type };
-        if (a.intent != null) base.intent = a.intent;
-        if (a.patch) base.patch = Object.fromEntries(Object.entries(a.patch).filter(([, v]) => v !== null));
-        if (a.factor != null) base.factor = a.factor;
-        if (a.id != null) base.id = a.id;
-        if (a.purpose != null) base.purpose = a.purpose;
-        if (a.duration != null) base.duration = a.duration;
-        if (a.mode != null) base.mode = a.mode;
-        return base;
-      })
-    );
+    const raw: Record<string, unknown>[] = [];
+    if (out.intent) raw.push({ type: "setIntent", intent: out.intent });
+    if (out.clearFilters) raw.push({ type: "clearFilters" });
+    if (out.filters) {
+      const { nearKind, nearKm, ...rest } = out.filters;
+      const patch: Record<string, unknown> = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== null));
+      if (nearKind && nearKm) patch.distance = [{ to: nearKind, maxKm: nearKm }];
+      if (Object.keys(patch).length) raw.push({ type: "setFilters", patch });
+    }
+    if (out.zoom) raw.push({ type: "zoom", factor: out.zoom });
+    if (out.viewMode) raw.push({ type: "setViewMode", mode: out.viewMode });
+    if (out.openListingId) raw.push({ type: "openListing", id: out.openListingId });
+    if (out.openUploadPurpose) raw.push({ type: "openUpload", purpose: out.openUploadPurpose, duration: out.openUploadDuration ?? undefined });
+    if (out.showSaved) raw.push({ type: "showSaved" });
+    if (out.showAll) raw.push({ type: "showAll" });
+    const actions: SuzaAction[] = validateActions(raw);
     let reply = out.reply;
     if (out.locationQuery) {
       const target = await geocode(out.locationQuery, ctx.criteria.target?.point ?? null).catch(() => null);
