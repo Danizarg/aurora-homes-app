@@ -61,6 +61,8 @@ interface DiscoveryState {
   pushMessage: (m: Omit<SuzaMessage, "id" | "at">) => SuzaMessage;
   clearConversation: () => void;
   setVoice: (patch: Partial<VoicePrefs>) => void;
+  /** Wipe all on-device state and preferences so the app starts over at the intro. */
+  resetAll: () => Promise<void>;
 }
 
 /** Fields that reset when the user clears filters; the destination and intent survive. */
@@ -77,24 +79,36 @@ let messageSeq = 0;
  * results, selection, view mode, the Suza conversation and voice settings.
  * Preferences persist on the device; results and selection are session-only.
  */
+const initialState = {
+  onboardingDone: false,
+  intent: null,
+  criteria: emptyCriteria,
+  camera: null,
+  userLocation: null,
+  userLocationLabel: null,
+  viewMode: "map" as ViewMode,
+  selectedListingId: null,
+  result: null,
+  searching: false,
+  messages: [],
+  asked: [],
+  showAll: false,
+  voice: { speak: true, replayIntro: false },
+};
+
 export const useDiscovery = create<DiscoveryState>()(
   persist(
     (set, get) => ({
       hydrated: false,
-      onboardingDone: false,
-      intent: null,
-      criteria: emptyCriteria,
-      camera: null,
-      userLocation: null,
-      userLocationLabel: null,
-      viewMode: "map",
-      selectedListingId: null,
-      result: null,
-      searching: false,
-      messages: [],
-      asked: [],
-      showAll: false,
-      voice: { speak: true, replayIntro: false },
+      ...initialState,
+
+      resetAll: async () => {
+        // Everything the app keeps on the device: this store, saved homes, local
+        // listings, bookings, conversations, demo session and geo caches.
+        await AsyncStorage.clear().catch(() => {});
+        await useDiscovery.persist.clearStorage();
+        set({ ...initialState, hydrated: true });
+      },
 
       setOnboardingDone: (onboardingDone) => set({ onboardingDone }),
       markAsked: (key) => set((s) => (s.asked.includes(key) ? {} : { asked: [...s.asked, key] })),

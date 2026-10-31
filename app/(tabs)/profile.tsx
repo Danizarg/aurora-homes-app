@@ -7,6 +7,7 @@ import { colors, layout, radius, shadow, spacing, typography } from "../../const
 import { Avatar } from "../../components/ui/Avatar";
 import { Divider } from "../../components/ui/Divider";
 import { useDiscovery } from "../../lib/store/discovery";
+import { haptic } from "../../lib/ui/haptics";
 import { getBookingRequests, getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
 
 type MenuItem = { icon: keyof typeof Ionicons.glyphMap; label: string; route: string };
@@ -33,6 +34,20 @@ export default function ProfileScreen() {
   const voice = useDiscovery((s) => s.voice);
   const setVoice = useDiscovery((s) => s.setVoice);
   const setOnboardingDone = useDiscovery((s) => s.setOnboardingDone);
+  const resetAll = useDiscovery((s) => s.resetAll);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  // Two taps within a few seconds, so a stray touch can't wipe the device state.
+  function startFresh() {
+    haptic.select();
+    if (!confirmReset) {
+      setConfirmReset(true);
+      setTimeout(() => setConfirmReset(false), 8000);
+      return;
+    }
+    setConfirmReset(false);
+    void resetAll().then(() => router.replace("/intro"));
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -83,9 +98,17 @@ export default function ProfileScreen() {
           <Text style={styles.menuLabel}>Suza speaks her replies</Text>
           <Switch value={voice.speak} onValueChange={(v) => setVoice({ speak: v })} trackColor={{ true: colors.text, false: colors.border }} thumbColor={colors.white} />
         </View>
-        <Pressable style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={() => { setVoice({ replayIntro: true }); setOnboardingDone(false); router.replace("/intro"); }}>
+        <Pressable style={styles.menuRow} onPress={() => { setVoice({ replayIntro: true }); setOnboardingDone(false); router.replace("/intro"); }}>
           <Ionicons name="earth-outline" size={24} color={colors.text} />
           <Text style={styles.menuLabel}>Replay the Earth intro</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.text} />
+        </Pressable>
+        <Pressable style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={startFresh}>
+          <Ionicons name="refresh-outline" size={24} color={confirmReset ? colors.error : colors.text} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.menuLabel, confirmReset && { color: colors.error }]}>{confirmReset ? "Tap again to start fresh" : "Start fresh"}</Text>
+            <Text style={styles.menuSub}>{confirmReset ? "Clears saved homes, your listings, bookings, chats and preferences on this device." : "Reset the app as if newly installed, intro included."}</Text>
+          </View>
           <Ionicons name="chevron-forward" size={18} color={colors.text} />
         </Pressable>
 
@@ -158,6 +181,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   menuRow: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.divider },
   menuLabel: { ...typography.body, color: colors.text, flex: 1 },
+  menuSub: { ...typography.micro, color: colors.textSecondary, marginTop: 2 },
   logout: { ...typography.body, color: colors.text, textDecorationLine: "underline" },
   version: { ...typography.micro, color: colors.textSecondary, marginTop: spacing.lg },
 });
