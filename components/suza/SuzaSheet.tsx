@@ -121,7 +121,7 @@ export function SuzaSheet({ suza, open, onClose }: SuzaSheetProps) {
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
-            placeholder={suza.voiceInputAvailable ? "Type or hold the mic" : "Type to Suza"}
+            placeholder={suza.voiceInputAvailable ? "Type, or tap the mic and talk" : "Type to Suza"}
             placeholderTextColor={colors.textSecondary}
             value={input}
             onChangeText={setInput}
