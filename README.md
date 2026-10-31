@@ -106,25 +106,37 @@ Opening the app feels like exploring the planet with a personal agent:
   planner (`POST /api/suza/plan`, enabled with
   `EXPO_PUBLIC_SUZA_REMOTE_PLANNER=true`) can replace the parser; its output
   is validated the same way and any failure falls back to the local planner.
-- **Voice** (`lib/voice/*`): replies are spoken with `expo-speech`
-  (mute/stop in the panel). Voice input uses the browser's speech recognition
-  on the web, and on iOS/Android records with `expo-audio` and posts the clip
-  to `POST /api/suza/transcribe` (enable with `EXPO_PUBLIC_SUZA_TRANSCRIBE=true`
-  once the endpoint exists). Without it the mic is disabled with an
-  explanation and typing works fully. No prerecorded audio is ever used.
+- **Voice** (`lib/voice/*`, `lib/suza/useSuza.ts`): replies are spoken
+  with `expo-speech` (mute/stop in the panel). Voice commands are hands-free:
+  tap the mic, talk, and Suza stops listening when you pause (browser speech
+  recognition on the web; on iOS/Android a short `expo-audio` clip with
+  silence detection is posted to `POST /api/suza/transcribe`). If she ends
+  with a question she listens again for the answer; typing or tapping an
+  option leaves hands-free mode. The mic is only offered when the server
+  reports it is configured; otherwise the panel says so and typing works
+  fully. No prerecorded audio is ever used.
 - **Owners**: "sell" / "rent out" (from Suza, the intro or the intent chip)
   opens the existing List with Suzi builder with the purpose pre-set; the
   typed area is geocoded for real coordinates (flagged approximate when only
   the city is known) and the published listing appears on the map and list.
 
-### Server endpoints the app can use (all optional)
+### Server endpoints (Expo API routes in this repo, all optional)
 
-| Endpoint | Enabled by | Request | Response |
+`app/api/suza/*+api.ts` run on the server, never in the app bundle. In
+development `npx expo start` serves them to the phone too (LAN or
+`--tunnel`); the app finds the dev server through `expo-constants`. For
+production, export the web build with its server and point the app at it
+with `EXPO_PUBLIC_SUZA_API_URL`.
+
+| Endpoint | Server env | Request | Response |
 |---|---|---|---|
-| `POST /api/suza/plan` | `EXPO_PUBLIC_SUZA_REMOTE_PLANNER=true` | `{ message, context: BrainContext }` | `{ reply, actions: SuzaAction[], question? }` |
-| `POST /api/suza/transcribe` | `EXPO_PUBLIC_SUZA_TRANSCRIBE=true` | multipart `audio`, `language` | `{ text }` |
+| `GET/POST /api/suza/transcribe` | `SUZA_STT_API_KEY` (or `OPENAI_API_KEY`), optional `SUZA_STT_URL`, `SUZA_STT_MODEL` | multipart `audio`, `language` | `{ text }`; `GET` → `{ ok }` |
+| `GET/POST /api/suza/plan` | `ANTHROPIC_API_KEY`, optional `SUZA_PLAN_MODEL` | `{ message, context: BrainContext }` | `{ reply, actions: SuzaAction[], question? }`; `GET` → `{ ok }` |
 
-Keys stay on the server; the app bundle holds none.
+Each route answers `GET` with `{ ok }` so the app enables voice input and
+the model-backed planner only when the key is actually there; without them
+voice falls back to typing and planning to the on-device parser. Keys stay
+on the server; the app bundle holds none. Put them in `.env` (git-ignored).
 
 ### Database
 

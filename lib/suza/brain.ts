@@ -5,6 +5,7 @@ import { parseUtterance, type ParsedUtterance } from "./parse";
 import { nextQuestion } from "./questions";
 import { geocode } from "../geo/geocode";
 import { parseDateRange } from "./dates";
+import { suzaEndpointReady, suzaUrl } from "./api";
 
 /**
  * Turns a user message into words plus typed actions.
@@ -12,7 +13,7 @@ import { parseDateRange } from "./dates";
  * Two planners share one contract:
  *  - local: the deterministic parser + question policy below, always
  *    available, no keys.
- *  - remote: POST {APP_URL}/api/suza/plan (the website holds the model key),
+ *  - remote: POST /api/suza/plan (an Expo API route in this repo; the server holds the model key),
  *    returning the same { reply, actions, question } shape. Its actions are
  *    validated before use, and any failure falls back to local.
  */
@@ -29,11 +30,12 @@ export interface BrainContext {
   resultIds: string[];
 }
 
-const APP_URL = (process.env.EXPO_PUBLIC_APP_URL || "https://zouza.ai").replace(/\/$/, "");
-const REMOTE_ENABLED = process.env.EXPO_PUBLIC_SUZA_REMOTE_PLANNER === "true";
+// The server planner (app/api/suza/plan+api.ts) is used whenever the server reports it is
+// configured; EXPO_PUBLIC_SUZA_REMOTE_PLANNER=false forces the on-device parser.
+const REMOTE_DISABLED = process.env.EXPO_PUBLIC_SUZA_REMOTE_PLANNER === "false";
 
 export async function planTurn(message: string, ctx: BrainContext): Promise<SuzaPlan> {
-  if (REMOTE_ENABLED) {
+  if (!REMOTE_DISABLED && (await suzaEndpointReady("/api/suza/plan"))) {
     const remote = await planRemotely(message, ctx);
     if (remote) return remote;
   }
@@ -41,10 +43,12 @@ export async function planTurn(message: string, ctx: BrainContext): Promise<Suza
 }
 
 async function planRemotely(message: string, ctx: BrainContext): Promise<SuzaPlan | null> {
+  const url = suzaUrl("/api/suza/plan");
+  if (!url) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 20_000);
   try {
-    const res = await fetch(`${APP_URL}/api/suza/plan`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ message, context: ctx }),
