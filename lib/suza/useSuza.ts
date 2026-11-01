@@ -8,15 +8,22 @@ import { useSpeechToText } from "../voice/useSpeechToText";
 export type SuzaState = "idle" | "listening" | "thinking" | "speaking";
 
 /**
- * The conversation loop: a message in (typed or transcribed) → plan →
- * execute actions → reply (spoken when voice is on) → optional follow-up
- * question with tap-to-answer options.
+ * The conversation loop: a message in (typed or spoken) → plan → execute
+ * actions → reply (spoken when voice is on) → optional follow-up question.
+ *
+ * Voice commands are hands-free: tap the mic once, talk, and Suza stops
+ * listening by herself when you pause. If the turn came in by voice and she
+ * ends with a question, she listens again for the answer; typing, tapping an
+ * option or interrupting her leaves hands-free mode.
  */
 export function useSuza() {
   const stt = useSpeechToText();
   const [state, setState] = useState<SuzaState>("idle");
   const [error, setError] = useState<string | null>(null);
   const busy = useRef(false);
+  const handsFree = useRef(false);
+  const sttRef = useRef(stt);
+  sttRef.current = stt;
 
   const speakEnabled = useDiscovery((s) => s.voice.speak);
 
@@ -25,29 +32,45 @@ export function useSuza() {
     else if (stt.status === "transcribing") setState("thinking");
     else if (stt.status === "error") {
       setError(stt.error);
+      handsFree.current = false;
       setState("idle");
     }
   }, [stt.status, stt.error]);
 
-  useEffect(() => () => void tts.stop(), []);
-
-  const say = useCallback(
-    (text: string, options?: { label: string; value: string }[]) => {
-      const store = useDiscovery.getState();
-      store.pushMessage({ role: "suza", text, options });
-      if (store.voice.speak) {
-        setState("speaking");
-        void tts.speak(text, { onDone: () => setState("idle"), onError: () => setState("idle") });
-      }
+  useEffect(
+    () => () => {
+      void tts.stop();
+      sttRef.current.cancel();
     },
     []
   );
 
+  const listenRef = useRef<() => Promise<void>>(async () => {});
+  const sendRef = useRef<(text: string, via?: "voice" | "text") => Promise<void>>(async () => {});
+
+  const say = useCallback((text: string, options?: { label: string; value: string }[], thenListen = false) => {
+    const store = useDiscovery.getState();
+    store.pushMessage({ role: "suza", text, options });
+    if (store.voice.speak) {
+      setState("speaking");
+      void tts.speak(text, {
+        onDone: () => {
+          setState("idle");
+          if (thenListen && handsFree.current) void listenRef.current();
+        },
+        onError: () => setState("idle"),
+      });
+    } else if (thenListen && handsFree.current) {
+      void listenRef.current();
+    }
+  }, []);
+
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, via: "voice" | "text" = "text") => {
       const trimmed = text.trim();
       if (!trimmed || busy.current) return;
       busy.current = true;
+      handsFree.current = via === "voice";
       setError(null);
       await tts.stop();
       const store = useDiscovery.getState();
@@ -71,9 +94,12 @@ export function useSuza() {
           useDiscovery.getState().markAsked(plan.question.key);
           reply = `${reply} ${plan.question.text}`.trim();
         }
-        say(reply, plan.question?.options);
+        // Listen again only when she asked something and we're still on this screen.
+        const leaving = plan.actions.some((a) => a.type === "openUpload" || a.type === "openListing" || a.type === "showSaved");
+        say(reply, plan.question?.options, !!plan.question && !leaving);
       } catch {
         setError("Suza hit a snag understanding that. Try rephrasing, or use the search bar.");
+        handsFree.current = false;
         setState("idle");
       } finally {
         busy.current = false;
@@ -81,24 +107,39 @@ export function useSuza() {
     },
     [say]
   );
+  sendRef.current = send;
 
   const startListening = useCallback(async () => {
     await tts.stop();
     setError(null);
-    await stt.start();
-  }, [stt]);
+    await sttRef.current.start({
+      autoStop: true,
+      onResult: (text) => {
+        if (text) void sendRef.current(text, "voice");
+        else {
+          handsFree.current = false;
+          setState("idle");
+        }
+      },
+    });
+  }, []);
+  listenRef.current = startListening;
 
   const stopListening = useCallback(async () => {
-    const text = await stt.stop();
-    if (text) await send(text);
-    else setState("idle");
-  }, [stt, send]);
+    const text = await sttRef.current.stop();
+    if (text) await sendRef.current(text, "voice");
+    else {
+      handsFree.current = false;
+      setState("idle");
+    }
+  }, []);
 
   const interrupt = useCallback(async () => {
+    handsFree.current = false;
     await tts.stop();
-    stt.cancel();
+    sttRef.current.cancel();
     setState("idle");
-  }, [stt]);
+  }, []);
 
   const greet = useCallback(
     (text: string, options?: { label: string; value: string }[]) => {
