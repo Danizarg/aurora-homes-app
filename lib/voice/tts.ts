@@ -5,14 +5,28 @@ import { Platform } from "react-native";
  * Suza's voice: the device's own speech synthesis (expo-speech), which
  * works in Expo Go and on the web with no keys. Picks the most natural
  * English voice the device offers (iOS "enhanced"/"premium" voices when
- * installed). A production neural voice can replace `speak` behind the
- * same interface later; nothing here is prerecorded.
+ * installed) and speaks softly — see `DELIVERY`. A production neural voice
+ * can replace `speak` behind the same interface later; nothing here is
+ * prerecorded.
  */
 export interface SpeakOptions {
   onStart?: () => void;
   onDone?: () => void;
   onError?: () => void;
 }
+
+/**
+ * How soft Suza sounds. The two platforms scale `rate` differently — on iOS
+ * 0.5 is the system default, everywhere else it is 1.0 — so both numbers sit
+ * about a fifth below their own platform's normal pace. Pitch below 1 warms
+ * the voice, and a volume under 1 keeps her under the room rather than over
+ * it; together they read as calm rather than sleepy.
+ */
+const DELIVERY = {
+  rate: Platform.OS === "ios" ? 0.4 : 0.82,
+  pitch: 0.9,
+  volume: 0.8,
+};
 
 let chosenVoice: string | undefined | null = null; // null = not looked up yet
 let speaking = false;
@@ -26,10 +40,13 @@ async function pickVoice(): Promise<string | undefined> {
       let s = 0;
       const name = (v.name ?? "").toLowerCase();
       const id = (v.identifier ?? "").toLowerCase();
-      if (v.quality === Speech.VoiceQuality.Enhanced) s += 10;
+      // Smoother synthesis matters more than the voice's character: the
+      // compact voices sound thin and brittle however gently they are driven.
+      if (v.quality === Speech.VoiceQuality.Enhanced) s += 14;
       if (id.includes("premium")) s += 12;
       if (id.includes("enhanced")) s += 8;
       if (/samantha|ava|zoe|allison|serena|kate|moira|karen|nicky|siri/.test(name)) s += 4; // warm, widely-installed female voices
+      if (/ava|serena|moira|fiona|sonia|libby/.test(name)) s += 3; // the gentlest of those
       if (/google uk english female|google us english|microsoft (aria|jenny|sonia|libby)/.test(name)) s += 6; // web/android
       if (v.language?.toLowerCase() === "en-gb") s += 1;
       if (/compact|eloquence|fred|zarvox|whisper|bad news|bells|bubbles|cellos|trinoids|organ|boing|junior|ralph|albert/.test(name)) s -= 20;
@@ -53,8 +70,9 @@ export const tts = {
     Speech.speak(trimmed, {
       voice,
       language: "en",
-      rate: Platform.OS === "ios" ? 0.5 : 0.95,
-      pitch: 1.02,
+      rate: DELIVERY.rate,
+      pitch: DELIVERY.pitch,
+      volume: DELIVERY.volume,
       onStart: () => options.onStart?.(),
       onDone: () => {
         speaking = false;
