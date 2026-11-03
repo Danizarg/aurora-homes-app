@@ -111,8 +111,12 @@ Opening the app feels like exploring the planet with a personal agent:
   planner (`POST /api/suza/plan`, enabled with
   `EXPO_PUBLIC_SUZA_REMOTE_PLANNER=true`) can replace the parser; its output
   is validated the same way and any failure falls back to the local planner.
-- **Voice** (`lib/voice/*`, `lib/suza/useSuza.ts`): replies are spoken
-  with `expo-speech` (mute/stop in the panel). Voice commands are hands-free:
+- **Voice** (`lib/voice/*`, `lib/suza/useSuza.ts`): replies are spoken by
+  the server's neural voice when it is configured — synthesised with an
+  OpenAI-compatible text-to-speech endpoint, then shaped on the server into a
+  soft, slightly echoing, spatial stereo clip (`app/api/suza/speak+api.ts`)
+  and streamed to the device — and otherwise by the device's own speech
+  synthesis (`expo-speech`). Mute/stop in the panel. Voice commands are hands-free:
   tap the mic, talk, and Suza stops listening when you pause (browser speech
   recognition on the web; on iOS/Android a short `expo-audio` clip with
   silence detection is posted to `POST /api/suza/transcribe`). If she ends
@@ -136,6 +140,7 @@ with `EXPO_PUBLIC_SUZA_API_URL`.
 | Endpoint | Server env | Request | Response |
 |---|---|---|---|
 | `GET/POST /api/suza/transcribe` | `SUZA_STT_API_KEY` (or `OPENAI_API_KEY`), optional `SUZA_STT_URL`, `SUZA_STT_MODEL` | multipart `audio`, `language` | `{ text }`; `GET` → `{ ok }` |
+| `GET/POST /api/suza/speak` | same key as transcription (or `SUZA_TTS_API_KEY`), optional `SUZA_TTS_VOICE`, `SUZA_TTS_MODEL`, `SUZA_TTS_INSTRUCTIONS` | `POST { text }` → `{ id, durationMs }`; `GET ?id=` → stereo WAV | `GET` → `{ ok }` |
 | `GET/POST /api/suza/plan` | `ANTHROPIC_API_KEY`, optional `SUZA_PLAN_MODEL` | `{ message, context: BrainContext }` | `{ reply, actions: SuzaAction[], question? }`; `GET` → `{ ok }` |
 
 Each route answers `GET` with `{ ok }` so the app enables voice input and
