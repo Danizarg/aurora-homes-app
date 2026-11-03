@@ -48,6 +48,12 @@ async function pickVoice(): Promise<string | undefined> {
       if (/samantha|ava|zoe|allison|serena|kate|moira|karen|nicky|siri/.test(name)) s += 4;
       if (/ava|serena|moira|fiona|sonia|libby/.test(name)) s += 3;
       if (/google uk english female|google us english|microsoft (aria|jenny|sonia|libby)/.test(name)) s += 6;
+      // Suza is written as a woman. On a machine whose only voices are the old Windows
+      // ones nothing above matches, every candidate ties on zero, and the tie goes to
+      // whichever the platform happens to list first — which is Microsoft David.
+      if (/\bmale\b/.test(name)) s -= 25;
+      if (/\b(david|mark|george|james|richard|guy|christopher|eric|brandon|jason|davis|andrew|brian|roger|alex|daniel|tom|aaron|arthur|gordon|oliver|reed|rishi|ryan|liam|william|thomas)\b/.test(name)) s -= 25;
+      if (/\b(zira|hazel|heera|catherine|susan|linda|eva|aria|jenny|michelle|emma|elizabeth|monica|nancy|sara)\b/.test(name)) s += 3;
       if (v.language?.toLowerCase() === "en-gb") s += 1;
       if (/compact|eloquence|fred|zarvox|whisper|bad news|bells|bubbles|cellos|trinoids|organ|boing|junior|ralph|albert/.test(name)) s -= 20;
       return s;

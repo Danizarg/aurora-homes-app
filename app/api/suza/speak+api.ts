@@ -30,7 +30,7 @@ const TTS_INSTRUCTIONS =
 const MAX_CHARS = 600;
 const CACHE_MAX = 80;
 /** Bump when `shape` changes so cached clips are re-rendered. */
-const SHAPE_VERSION = 2;
+const SHAPE_VERSION = 3;
 
 function key() {
   return process.env.SUZA_TTS_API_KEY || process.env.SUZA_STT_API_KEY || process.env.OPENAI_API_KEY || "";
@@ -143,6 +143,8 @@ function encodeWav(left: Float32Array, right: Float32Array, sampleRate: number):
  * ears for width, and the dry voice kept clearly in front of it all.
  */
 function shape(mono: Float32Array, sr: number): { left: Float32Array; right: Float32Array } {
+  // Room for the echo to die in. It is working space, not the length of the
+  // clip: whatever is left unused gets trimmed off the end before returning.
   const tailMs = 900;
   const n = mono.length + Math.round((sr * tailMs) / 1000);
   const left = new Float32Array(n);
@@ -190,7 +192,24 @@ function shape(mono: Float32Array, sr: number): { left: Float32Array; right: Flo
   for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
   const g = peak > 0 ? 0.84 / peak : 1;
   for (let i = 0; i < n; i++) { left[i] *= g; right[i] *= g; }
-  return { left, right };
+
+  // Cut the dead air off the end. The echo is inaudible long before the 900 ms
+  // it is given, and the model leaves its own quiet after the last word on top
+  // of that; together they ran to more than a second. The player has to play all
+  // of it before it reports the line finished, and Suza leads the flow by voice,
+  // so every one of those seconds is a pause between her steps.
+  const floor = 0.0015; // about -56 dBFS: below anything a phone speaker renders
+  let last = n - 1;
+  while (last > 0 && Math.abs(left[last]) < floor && Math.abs(right[last]) < floor) last--;
+  const end = Math.min(n, last + ms(60));
+  // Ramp the final few milliseconds down, or the cut itself clicks.
+  const fade = Math.min(ms(25), end);
+  for (let i = 0; i < fade; i++) {
+    const k = i / fade;
+    left[end - 1 - i] *= k;
+    right[end - 1 - i] *= k;
+  }
+  return { left: left.subarray(0, end), right: right.subarray(0, end) };
 }
 
 // ---------------------------------------------------------------- synthesis
