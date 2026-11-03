@@ -27,8 +27,8 @@ const FOV_DEG = 34;
 /** The idle globe spans this fraction of the screen's narrower side, with space around it. */
 const GLOBE_SCREEN_FRACTION = 0.8;
 // Stop at country/region scale: the native map continues the fly-in from here.
-// Closer than this and the 2048-wide rasters are magnified past three times,
-// which turns the city lights into blobs; at 2.6 the coastlines still read.
+// The lights raster is 4096 wide and takes this magnification, but the albedo
+// behind it is 2048; at 2.6 its coastlines still read.
 const NEAR_DISTANCE = 2.6;
 
 /**
@@ -111,8 +111,14 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
       return tex;
     };
     // NASA's Blue Marble for the land and sea, NASA's night lights for the cities.
+    // The lights are what you look at on the way down, so they get 4096 while the albedo
+    // stays at 2048: 4096 is the largest texture most phones accept, and one costs about
+    // 32 MB of memory once decoded.
     const texture = await loadTexture(require("../../assets/earth/earth-albedo-2048.jpg"), [9, 16, 34, 255]);
-    const lightsTexture = await loadTexture(require("../../assets/earth/earth-night-lights-2048.png"), [0, 0, 0, 255]);
+    const lightsTexture = await loadTexture(require("../../assets/earth/earth-night-lights-4096.jpg"), [0, 0, 0, 255]);
+    // The glow taps have to land on the lights raster's own neighbouring texels, so this
+    // travels with the file above rather than sitting as a number inside the shader.
+    const lightsTexel = [1 / 4096, 1 / 2048];
 
     const width = gl.drawingBufferWidth;
     const height = gl.drawingBufferHeight;
@@ -231,6 +237,7 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, lightsTexture);
       gl.uniform1i(gl.getUniformLocation(globeProgram, "uLights"), 1);
+      gl.uniform2fv(gl.getUniformLocation(globeProgram, "uLightsTexel"), new Float32Array(lightsTexel));
       const aPos = gl.getAttribLocation(globeProgram, "aPosition");
       const aUv = gl.getAttribLocation(globeProgram, "aUv");
       gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
