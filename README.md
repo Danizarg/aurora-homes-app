@@ -68,7 +68,8 @@ Opening the app feels like exploring the planet with a personal agent:
   globe rendered with raw WebGL through `expo-gl`: NASA's Blue Marble
   (`assets/earth/earth-albedo-2048.jpg`) under a low sun, so the face you see
   is mostly night, with NASA's city lights
-  (`assets/earth/earth-night-lights-2048.png`) burning on the dark side, a
+  (`assets/earth/earth-night-lights-4096.jpg`, twice the width of the albedo so
+  the cities stay separate as the camera comes down) burning on the dark side, a
   thin blue limb of atmosphere and a field of stars. Both rasters are public
   domain. The planet turns for a few seconds, Suza asks aloud where in the
   world you're looking, and only once you answer — typed, tapped, spoken, or

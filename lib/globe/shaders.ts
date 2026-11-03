@@ -19,6 +19,7 @@ export const globeFragment = `
 precision mediump float;
 uniform sampler2D uTexture;
 uniform sampler2D uLights;
+uniform vec2 uLightsTexel;
 uniform vec3 uLightDir;
 uniform vec3 uCameraPos;
 varying vec3 vNormal;
@@ -38,7 +39,7 @@ void main() {
   vec3 color = mix(night, lit, day);
   // City lights from NASA's night-lights raster, only where the sun has left:
   // a sharp core plus a wider soft glow from four offset taps, in warm sodium amber.
-  vec2 px = vec2(1.0 / 2048.0, 1.0 / 1024.0) * 1.8;
+  vec2 px = uLightsTexel * 1.8;
   float core = texture2D(uLights, vUv).r;
   float glow = texture2D(uLights, vUv + vec2(px.x, 0.0)).r + texture2D(uLights, vUv - vec2(px.x, 0.0)).r
              + texture2D(uLights, vUv + vec2(0.0, px.y)).r + texture2D(uLights, vUv - vec2(0.0, px.y)).r;
