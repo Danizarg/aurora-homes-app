@@ -225,10 +225,22 @@ export async function GET(request: Request) {
   const clip = await recall(id);
   if (!clip) return json({ error: "Unknown clip; synthesise it again." }, 404);
   clip.at = Date.now();
-  return new Response(clip.wav as unknown as BodyInit, {
-    status: 200,
-    headers: { "content-type": "audio/wav", "content-length": String(clip.wav.byteLength), "cache-control": "private, max-age=3600", "accept-ranges": "none" },
-  });
+  const total = clip.wav.byteLength;
+  const common = { "content-type": "audio/wav", "cache-control": "private, max-age=3600", "accept-ranges": "bytes" };
+  // Native players (AVPlayer in particular) fetch media with byte ranges; answer them properly.
+  const range = request.headers.get("range");
+  const m = range?.match(/^bytes=(\d*)-(\d*)$/);
+  if (m && (m[1] || m[2])) {
+    const start = m[1] ? Number(m[1]) : Math.max(0, total - Number(m[2]));
+    const end = m[1] && m[2] ? Math.min(Number(m[2]), total - 1) : total - 1;
+    if (start > end || start >= total) return new Response(null, { status: 416, headers: { ...common, "content-range": `bytes */${total}` } });
+    const part = clip.wav.subarray(start, end + 1);
+    return new Response(part as unknown as BodyInit, {
+      status: 206,
+      headers: { ...common, "content-length": String(part.byteLength), "content-range": `bytes ${start}-${end}/${total}` },
+    });
+  }
+  return new Response(clip.wav as unknown as BodyInit, { status: 200, headers: { ...common, "content-length": String(total) } });
 }
 
 export async function POST(request: Request) {

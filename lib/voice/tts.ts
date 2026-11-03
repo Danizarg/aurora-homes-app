@@ -99,24 +99,64 @@ async function speakRemotely(text: string, id: number, options: SpeakOptions): P
   try {
     await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(() => {});
     releasePlayer();
-    const p = createAudioPlayer({ uri: `${url}?id=${encodeURIComponent(clipId)}` }, { updateInterval: 150 });
+    // Phones download the clip first (no streaming quirks over a tunnel); the web streams it.
+    const p = createAudioPlayer({ uri: `${url}?id=${encodeURIComponent(clipId)}` }, { updateInterval: 150, downloadFirst: Platform.OS !== "web" });
     player = p;
-    let started = false;
-    p.addListener("playbackStatusUpdate", (status) => {
-      if (id !== utterance) return;
-      if (status.playing && !started) {
-        started = true;
-        options.onStart?.();
-      }
-      if (status.didJustFinish) {
-        speaking = false;
+    return await new Promise<boolean>((resolve) => {
+      let started = false;
+      let playRequested = false;
+      let settled = false;
+      const settle = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        resolve(ok);
+      };
+      // If nothing is audible within this long, give the line to the device voice instead.
+      const guard = setTimeout(() => {
+        if (started || id !== utterance) return;
+        console.warn("[suza voice] clip did not start playing in time; using the device voice");
         releasePlayer();
-        options.onDone?.();
+        settle(false);
+      }, 9_000);
+      p.addListener("playbackStatusUpdate", (status) => {
+        if (id !== utterance) {
+          clearTimeout(guard);
+          return settle(true);
+        }
+        if (status.isLoaded && !playRequested) {
+          playRequested = true;
+          try {
+            p.play();
+          } catch {
+            clearTimeout(guard);
+            releasePlayer();
+            settle(false);
+          }
+        }
+        if (status.playing && !started) {
+          started = true;
+          clearTimeout(guard);
+          settle(true);
+          options.onStart?.();
+        }
+        if (status.didJustFinish) {
+          clearTimeout(guard);
+          speaking = false;
+          releasePlayer();
+          settle(true);
+          options.onDone?.();
+        }
+      });
+      // Some platforms report loaded before the listener is attached; a play() call is harmless then.
+      try {
+        p.play();
+        playRequested = true;
+      } catch {
+        // the listener will try again once loaded
       }
     });
-    p.play();
-    return true;
-  } catch {
+  } catch (e) {
+    console.warn("[suza voice] playback failed; using the device voice", e);
     releasePlayer();
     return false;
   }

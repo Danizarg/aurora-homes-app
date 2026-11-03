@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { Asset } from "expo-asset";
 import { buildSphere, buildStars, rotationFor } from "../../lib/globe/geometry";
+import { earthFixedDirection, rotateDirection, subsolarPoint } from "../../lib/globe/sun";
 import { angleDelta, easeInOutCubic, easeOutCubic, lookAt, multiply, perspective, rotationX, rotationY, scale } from "../../lib/globe/math";
 import { globeFragment, globeVertex, haloFragment, haloVertex, starsFragment, starsVertex } from "../../lib/globe/shaders";
 
@@ -120,8 +121,14 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
     const halfV = (FOV_DEG * Math.PI) / 360;
     const halfH = Math.atan(Math.tan(halfV) * (width / height));
     const FAR_DISTANCE = 1 / Math.sin(GLOBE_SCREEN_FRACTION * Math.min(halfH, halfV));
-    // A low sun behind the left limb: the face we see is mostly night, with a bright crescent.
-    const lightDir = [-0.88, 0.2, -0.42];
+    // The real sun: fixed to the planet at the current time's subsolar point, so
+    // whatever faces the camera is lit exactly as it is right now. Re-read every
+    // frame so a long idle keeps up with the clock.
+    let sunEarthFixed = (() => {
+      const s = subsolarPoint();
+      return earthFixedDirection(s.lat, s.lng);
+    })();
+    let sunSampledAt = Date.now();
 
     let yaw = 0.9; // radians; spins while idle
     let pitch = 0.25;
@@ -177,6 +184,12 @@ export function Globe({ target, phase, onArrived, onReady, reducedMotion, style 
       const eye: [number, number, number] = [0, 0, distance];
       const view = lookAt(eye, [0, 0, 0], [0, 1, 0]);
       const model = multiply(rotationX(pitch), rotationY(yaw));
+      if (Date.now() - sunSampledAt > 60_000) {
+        const s = subsolarPoint();
+        sunEarthFixed = earthFixedDirection(s.lat, s.lng);
+        sunSampledAt = Date.now();
+      }
+      const lightDir = rotateDirection(model, sunEarthFixed);
 
       gl.viewport(0, 0, width, height);
       // Space, not navy: the planet should be the only lit thing on screen.
