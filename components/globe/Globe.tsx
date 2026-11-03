@@ -25,8 +25,10 @@ const ZOOM_MS = 3200;
 const FOV_DEG = 34;
 /** The idle globe spans this fraction of the screen's narrower side, with space around it. */
 const GLOBE_SCREEN_FRACTION = 0.8;
-// Stop at country/region scale: the texture can't show streets, and the native map continues the fly-in from here.
-const NEAR_DISTANCE = 2.05;
+// Stop at country/region scale: the native map continues the fly-in from here.
+// Closer than this and the 2048-wide rasters are magnified past three times,
+// which turns the city lights into blobs; at 2.6 the coastlines still read.
+const NEAR_DISTANCE = 2.6;
 
 /**
  * A real 3D Earth rendered with raw WebGL through expo-gl (runs in Expo Go,
