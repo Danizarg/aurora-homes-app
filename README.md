@@ -65,15 +65,20 @@ sparkles icon for Zouza or Suzi.
 Opening the app feels like exploring the planet with a personal agent:
 
 - **Earth intro** (`app/intro.tsx`, `components/globe/Globe.tsx`) — a real 3D
-  globe rendered with raw WebGL through `expo-gl`: a flat, bright,
-  Duolingo-coloured Earth (green land, blue sea, white ice, dark outline,
-  toon shading) built from NASA's Blue Marble by
-  `scripts/earth-texture/build.py`, over a deep-blue starfield. It spins, turns to the visitor's city (with
-  location permission; otherwise Marbella, clearly labelled as a demo
-  destination) and dollies in; the native map then continues the fly-in from
-  country to city. Skip is always available, reduced-motion settings shorten
-  the sequence, and Profile → *Replay the Earth intro* runs it again.
-- **Suza greets and asks** what you're here for — buy, rent, short stay, or
+  globe rendered with raw WebGL through `expo-gl`: NASA's Blue Marble
+  (`assets/earth/earth-albedo-2048.jpg`) under a low sun, so the face you see
+  is mostly night, with NASA's city lights
+  (`assets/earth/earth-night-lights-2048.png`) burning on the dark side, a
+  thin blue limb of atmosphere and a field of stars. Both rasters are public
+  domain. The planet turns for a few seconds, Suza asks aloud where in the
+  world you're looking, and only once you answer — typed, tapped, spoken, or
+  *Use my location* — does it turn and dolly in to that place (geocoded
+  through Photon, `lib/geo/geocode.ts`); the native map then continues the
+  fly-in from country to city. Nothing asks for your location until you offer
+  it. Skip is always available (Marbella stands in, clearly labelled as a
+  demo), reduced-motion settings shorten the sequence, and Profile → *Replay
+  the Earth intro* runs it again.
+- **Then Suza asks** what you're here for — buy, rent, short stay, or
   list your own property — spoken aloud (device speech synthesis via
   `expo-speech`) and answerable by tap, text, or voice where available.
 - **The map is home** (`app/(tabs)/index.tsx`, `components/discovery/*`):
