@@ -75,6 +75,7 @@ const SYSTEM = [
   "- Selling or renting out their own property means intent list + openUploadPurpose (and openUploadDuration if said).",
   "- Distances are straight-line. Never present them as walking or driving times. \"Near the sea / beach / a school\" with no distance means nearKind with nearKm 2.",
   "- Ask at most one follow-up question, only when it would materially narrow the search, and never a key already in context.asked. Offer 2-4 short options when natural.",
+  "- The follow-up question goes only in question.text. The reply itself never asks anything; the app reads the reply and then the question.",
   "- Replies are spoken aloud: warm, concise, no markdown, no lists.",
 ].join("\n");
 
@@ -157,6 +158,11 @@ export async function POST(request: Request) {
     if (out.showAll) raw.push({ type: "showAll" });
     const actions: SuzaAction[] = validateActions(raw);
     let reply = out.reply;
+    // The question is appended by the app; drop any question the model also put in the reply.
+    if (out.question) {
+      const kept = reply.split(/(?<=[.!?])\s+/).filter((sentence) => !sentence.trim().endsWith("?"));
+      reply = kept.join(" ").trim() || "Got it.";
+    }
     if (out.locationQuery) {
       const target = await geocode(out.locationQuery, ctx.criteria.target?.point ?? null).catch(() => null);
       if (target) actions.unshift({ type: "setTarget", target });

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { Redirect, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,6 +43,28 @@ export default function DiscoveryScreen() {
   useSearchSync();
   const suza = useSuza();
 
+  // Arriving from the intro in guided mode: open Suza and let her lead (next question, then results).
+  const guideStarted = useRef(false);
+  const suzaRef = useRef(suza);
+  useEffect(() => {
+    suzaRef.current = suza;
+  });
+  useEffect(() => {
+    if (!hydrated || !onboardingDone || replayIntro || guideStarted.current) return;
+    if (!useDiscovery.getState().guided) return;
+    const timer = setTimeout(() => {
+      guideStarted.current = true;
+      setSheetOpen(true);
+      void suzaRef.current.guide();
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [hydrated, onboardingDone, replayIntro]);
+
+  const closeSheet = useCallback(() => {
+    setSheetOpen(false);
+    if (useDiscovery.getState().guided) void suza.endGuide();
+  }, [suza]);
+
   useFocusEffect(
     useCallback(() => {
       getSavedListingIds().then(setSavedIds);
@@ -84,7 +106,7 @@ export default function DiscoveryScreen() {
         </View>
       ) : null}
 
-      <SuzaSheet suza={suza} open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <SuzaSheet suza={suza} open={sheetOpen} onClose={closeSheet} />
       <DiscoveryFilters visible={filtersOpen} onClose={() => setFiltersOpen(false)} />
       <IntentSheet visible={intentOpen} onClose={() => setIntentOpen(false)} />
     </View>

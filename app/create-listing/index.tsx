@@ -36,6 +36,9 @@ import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { createListingInSupabase, uploadListingImages } from "../../lib/supabase/listings";
 import { getOrCreateSupabaseUserId } from "../../lib/auth/service";
+import { useDiscovery } from "../../lib/store/discovery";
+import { useVoiceGuide } from "../../lib/voice/useVoiceGuide";
+import { spokenGoOn, spokenNumber, spokenSkip, spokenYesNo } from "../../lib/suza/spoken";
 
 type WizardStep = "photos" | "address" | "price" | "chat" | "generating" | "review" | "preview" | "success";
 
@@ -337,6 +340,183 @@ export default function AiListingBuilder() {
     setPublishing(false);
   }
 
+  /** Move on from the address step, resolving the typed (or spoken) area to real coordinates in the background. */
+  function submitAddress(value: string) {
+    setStep("price");
+    geocode(value).then((t) => {
+      if (t) setGeo({ lat: t.point.lat, lng: t.point.lng, approximate: t.source === "local" });
+      else {
+        const parts = splitAddress(value);
+        const c = lookupCoords(parts.addressArea, parts.city);
+        setGeo(c ? { lat: c.lat, lng: c.lng, approximate: true } : null);
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------- Suza's voice guide
+  // When Suza brought them here (from the intro, or after they asked her to list a place), she
+  // talks them through every step and listens for spoken answers. Taps and typing keep working.
+  const [guided] = useState(() => params.from === "intro" || params.from === "suza" || useDiscovery.getState().guided);
+  const guide = useVoiceGuide(guided);
+  const spokenIds = useRef(new Set<string>());
+  const handlers = useRef({
+    photos: (_h: string) => {},
+    address: (_h: string) => {},
+    price: (_h: string) => {},
+    chat: (_i: number, _h: string) => {},
+    review: (_h: string) => {},
+    preview: (_h: string) => {},
+  });
+  const isSale = (answers.positioning ?? presetPositioning) === "sale";
+
+  // Refresh the spoken-answer handlers after every render so they always act on current state.
+  useEffect(() => {
+    handlers.current.photos = (h) => {
+      if (images.length > 0 && spokenGoOn(h)) setStep("address");
+      else guide.say("Add a few photos first, then say next.", (x) => handlers.current.photos(x));
+    };
+    handlers.current.address = (h) => {
+      const place = h
+        .replace(/^(it'?s|it is|the place is|we'?re|we are|located)?\s*(in|at|on)?\s*/i, "")
+        .replace(/[.!?]+$/, "")
+        .trim();
+      if (place.length < 2) {
+        guide.say("Sorry, which area and city is it in?", (x) => handlers.current.address(x));
+        return;
+      }
+      setAddress(place);
+      guide.say(`${place}, got it.`);
+      submitAddress(place);
+    };
+    handlers.current.price = (h) => {
+      if (spokenSkip(h)) {
+        setPriceInput("");
+        guide.say("No problem, you can add a price later.");
+        startChat();
+        return;
+      }
+      const n = spokenNumber(h);
+      if (n === null || n <= 0) {
+        guide.say("Sorry, what price would you like? Or say skip.", (x) => handlers.current.price(x));
+        return;
+      }
+      setPriceInput(String(Math.round(n)));
+      guide.say(`${Math.round(n).toLocaleString("en-GB")} euros${isSale ? "" : " a month"}. Perfect.`);
+      startChat();
+    };
+    handlers.current.chat = (i, h) => {
+      const q = questions[i];
+      if (!q || i !== questionIndex) return;
+      let answered: { label: string; value: string | number | boolean } | null = null;
+      if (q.field === "positioning") {
+        if (/\b(sale|sell)/i.test(h)) answered = { label: "Sale", value: "sale" };
+        else if (/\b(holiday|short|vacation)/i.test(h)) answered = { label: "Holiday stay", value: "rent_holiday" };
+        else if (/\b(long|rental|rent)/i.test(h)) answered = { label: "Long-term rental", value: "rent_long" };
+      } else if (q.quickReplies?.every((r) => typeof r.value === "boolean")) {
+        const yes = spokenYesNo(h);
+        if (yes !== null) answered = { label: yes ? "Yes" : "No", value: yes };
+      } else if (q.keyboardType === "number-pad") {
+        const n = spokenNumber(h);
+        if (n !== null && n >= 0) answered = { label: String(n), value: n };
+      } else if (q.quickReplies) {
+        const hit = q.quickReplies.find((r) => h.toLowerCase().includes(r.label.toLowerCase()));
+        if (hit) answered = { label: hit.label, value: hit.value };
+      } else if (h.trim()) {
+        answered = { label: h.trim(), value: h.trim() };
+      }
+      if (!answered) {
+        guide.say(`Sorry, I didn't catch that. ${q.ai}`, (x) => handlers.current.chat(i, x));
+        return;
+      }
+      answerCurrentQuestion(answered.label, answered.value);
+    };
+    handlers.current.review = (h) => {
+      if (spokenGoOn(h)) setStep("preview");
+      else guide.say("Take your time. Say next when you're happy with it.", (x) => handlers.current.review(x));
+    };
+    handlers.current.preview = (h) => {
+      if (/\b(publish|post|go live|yes|yeah|do it|go ahead|sure)\b/i.test(h)) {
+        guide.say("Publishing it now.");
+        void publish();
+      } else {
+        guide.say("No problem. Tap Publish whenever you're ready.");
+      }
+    };
+  });
+
+  // One line per step, spoken when the step appears.
+  useEffect(() => {
+    if (!guided) return;
+    const key = `step-${step}`;
+    if (spokenIds.current.has(key)) return;
+    spokenIds.current.add(key);
+    switch (step) {
+      case "photos":
+        guide.say(
+          isSale
+            ? "Let's get your home listed for sale. First, photos: tap Add photos and choose five to fifteen of your best rooms."
+            : "Let's get your place listed. First, photos: tap Add photos and choose five to fifteen of your best rooms."
+        );
+        break;
+      case "address":
+        guide.say("Where is it? The area and the city are enough, like Golden Mile, Marbella.", (h) => handlers.current.address(h));
+        break;
+      case "price":
+        guide.say(
+          isSale
+            ? "What price are you asking? You can also say skip and set it later."
+            : "What monthly rent would you like? You can also say skip and set it later.",
+          (h) => handlers.current.price(h)
+        );
+        break;
+      case "generating":
+        guide.say("Thank you. I'm writing your listing now, this takes a moment.");
+        break;
+      case "review":
+        guide.say(
+          `Here's what I wrote${generated?.title ? `: ${generated.title}` : ""}. Change anything you like, then say next.`,
+          (h) => handlers.current.review(h)
+        );
+        break;
+      case "preview":
+        guide.say(
+          "This is how it will look. Publishing costs twenty euros a month while it's live, with no commission. Shall I publish it?",
+          (h) => handlers.current.preview(h)
+        );
+        break;
+      case "success":
+        useDiscovery.getState().setGuided(false);
+        guide.say("Your listing is live. You can open it now, or see it on the map.");
+        break;
+      default:
+        break;
+    }
+  }, [guided, step, guide, isSale, generated]);
+
+  // Photos can only be picked by hand: once some are in, Suza offers to move on.
+  const hasPhotos = images.length > 0;
+  useEffect(() => {
+    if (!guided || step !== "photos" || !hasPhotos || spokenIds.current.has("photos-added")) return;
+    spokenIds.current.add("photos-added");
+    guide.say("Lovely. Add more if you like, or say next.", (h) => handlers.current.photos(h));
+  }, [guided, step, hasPhotos, guide]);
+
+  // In the chat, read each question aloud (with Suza's first impression before the first one) and listen.
+  useEffect(() => {
+    if (!guided || step !== "chat") return;
+    const last = messages[messages.length - 1];
+    if (!last || last.from !== "ai" || !last.id.startsWith("q-") || spokenIds.current.has(last.id)) return;
+    spokenIds.current.add(last.id);
+    const intro = messages.find((m) => m.id === "intro");
+    let text = last.text;
+    if (intro && !spokenIds.current.has("intro")) {
+      spokenIds.current.add("intro");
+      text = `${intro.text} ${text}`;
+    }
+    const i = Number(last.id.slice(2));
+    guide.say(text, (h) => handlers.current.chat(i, h));
+  }, [guided, step, messages, guide]);
+
   function goBack() {
     const idx = stepOrder.indexOf(step);
     if (idx > 0) setStep(stepOrder[idx - 1]);
@@ -351,17 +531,7 @@ export default function AiListingBuilder() {
     address: {
       label: "Next",
       disabled: !address.trim(),
-      onPress: () => {
-        setStep("price");
-        // Resolve the typed area to real coordinates in the background; fall back to the city table and flag it.
-        geocode(address).then((t) => {
-          if (t) setGeo({ lat: t.point.lat, lng: t.point.lng, approximate: t.source === "local" });
-          else {
-            const c = lookupCoords(addressArea, city);
-            setGeo(c ? { lat: c.lat, lng: c.lng, approximate: true } : null);
-          }
-        });
-      },
+      onPress: () => submitAddress(address),
     },
     price: { label: "Let Suzi take over", onPress: startChat },
     review: { label: "Next", onPress: () => setStep("preview") },
@@ -619,6 +789,15 @@ export default function AiListingBuilder() {
         </View>
       )}
 
+      {guide.canListen && (step === "photos" || step === "address" || step === "price" || step === "chat" || step === "review" || step === "preview") ? (
+        <View style={styles.voiceRow} pointerEvents="box-none">
+          <Pressable onPress={guide.listening ? guide.stop : guide.listenAgain} style={[styles.voicePill, guide.listening && styles.voicePillActive]} hitSlop={8}>
+            <Ionicons name={guide.listening ? "radio-button-on" : "mic"} size={16} color={colors.white} />
+            <Text style={styles.voicePillText}>{guide.listening ? "Listening…" : "Answer by voice"}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {showFooter ? (
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
           <Button label="Back" variant="link" onPress={() => (step === "photos" ? router.back() : goBack())} />
@@ -656,6 +835,10 @@ const styles = StyleSheet.create({
   progressFill: { height: 4, backgroundColor: colors.text },
   content: { padding: spacing.lg, paddingBottom: 120 },
   stepTitle: { ...typography.display, color: colors.text, marginTop: spacing.sm },
+  voiceRow: { alignItems: "center", paddingVertical: spacing.sm },
+  voicePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: spacing.md, height: 36, borderRadius: radius.pill, backgroundColor: colors.primary },
+  voicePillActive: { backgroundColor: colors.success },
+  voicePillText: { ...typography.smallBold, color: colors.white },
   stepBody: { ...typography.body, color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xl },
 
   uploadDropzone: {

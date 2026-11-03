@@ -44,7 +44,7 @@ export function executeActions(actions: SuzaAction[]) {
         router.push(`/listing/${a.id}`);
         break;
       case "openUpload":
-        router.push({ pathname: "/create-listing", params: { purpose: a.purpose, duration: a.duration ?? "" } });
+        router.push({ pathname: "/create-listing", params: { purpose: a.purpose, duration: a.duration ?? "", from: "suza" } });
         break;
       case "setViewMode":
         s.setViewMode(a.mode);
