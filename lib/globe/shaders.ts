@@ -18,6 +18,7 @@ void main() {
 export const globeFragment = `
 precision mediump float;
 uniform sampler2D uTexture;
+uniform sampler2D uLights;
 uniform vec3 uLightDir;
 uniform vec3 uCameraPos;
 varying vec3 vNormal;
@@ -27,19 +28,19 @@ void main() {
   vec3 n = normalize(vNormal);
   vec3 v = normalize(uCameraPos - vWorldPos);
   vec3 albedo = texture2D(uTexture, vUv).rgb;
-  // Toon shading: two soft bands instead of a photographic terminator, so colours stay bright and flat.
   float ndl = dot(n, normalize(uLightDir));
-  float lit = smoothstep(-0.15, 0.25, ndl);
-  float light = mix(0.62, 1.0, lit);
-  vec3 color = albedo * light;
-  // A soft highlight patch, like a sticker's sheen.
-  float sheen = smoothstep(0.55, 0.95, ndl) * 0.10;
-  color += vec3(sheen);
-  // Thick dark rim at the silhouette: Duolingo's outline stroke.
-  float facing = max(dot(n, v), 0.0);
-  float edge = 1.0 - smoothstep(0.18, 0.34, facing);
-  vec3 outline = vec3(0.09, 0.29, 0.55);
-  color = mix(color, outline, edge);
+  // A narrow terminator rather than a toon band: the photograph on the day
+  // side, continents only just readable in cold blue on the night side.
+  float day = smoothstep(-0.16, 0.34, ndl);
+  vec3 night = albedo * vec3(0.035, 0.055, 0.105);
+  vec3 lit = albedo * (0.20 + 0.92 * max(ndl, 0.0));
+  vec3 color = mix(night, lit, day);
+  // City lights, from NASA's night-lights raster, only where the sun has left.
+  float lights = texture2D(uLights, vUv).r;
+  color += vec3(1.0, 0.80, 0.52) * lights * (1.0 - day) * 1.45;
+  // Atmosphere on the limb, brightest where it catches the sun.
+  float fres = pow(1.0 - max(dot(n, v), 0.0), 3.2);
+  color += vec3(0.26, 0.52, 1.0) * fres * (0.16 + day * 1.25);
   gl_FragColor = vec4(color, 1.0);
 }`;
 
@@ -65,10 +66,11 @@ varying vec3 vWorldPos;
 void main() {
   vec3 n = normalize(vNormal);
   vec3 v = normalize(uCameraPos - vWorldPos);
-  // Back faces of a slightly larger sphere: strongest at the limb, fading outward.
-  float rim = pow(max(dot(n, -v), 0.0), 1.6);
-  float a = rim * 0.55;
-  gl_FragColor = vec4(vec3(0.45, 0.78, 1.0) * a, a);
+  // Back faces of a slightly larger sphere: a thin blue line of air at the
+  // limb, fading outward into the black.
+  float rim = pow(max(dot(n, -v), 0.0), 3.0);
+  float a = rim * 0.42;
+  gl_FragColor = vec4(vec3(0.28, 0.54, 1.0) * a, a);
 }`;
 
 export const starsVertex = `
