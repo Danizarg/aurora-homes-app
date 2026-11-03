@@ -15,6 +15,7 @@ import { boundsAround } from "../lib/geo/bounds";
 import { useDiscovery } from "../lib/store/discovery";
 import { useSuza } from "../lib/suza/useSuza";
 import { useSpeechToText } from "../lib/voice/useSpeechToText";
+import { parseUtterance } from "../lib/suza/parse";
 import { haptic } from "../lib/ui/haptics";
 import type { Intent, SearchTarget } from "../types/search";
 
@@ -24,7 +25,9 @@ const DEMO_TARGET: SearchTarget = { label: "Marbella", point: MARBELLA, bounds: 
 
 const WHERE_QUESTION = "Hey, I'm Suza, your personal real estate assistant. Where in the world are you looking?";
 const intentQuestion = (place: string) =>
-  `${place} — lovely. Are you looking to buy a home, rent somewhere, find a short stay, or list your own property?`;
+  `${place.split(",")[0]}, lovely. Would you like to rent, buy, find a short stay, or sell or rent out a place of your own?`;
+const LISTING_QUESTION = "Lovely. Are you selling it, or renting it out? And if renting, short-term, seasonal, or long-term?";
+const NOT_CAUGHT_INTENT = "Sorry, I didn't quite catch that. Rent, buy, a short stay, or sell or rent out your own place?";
 const STARTERS = ["Marbella", "Málaga", "Barcelona", "Madrid", "Valencia"];
 
 const choices: { intent: Intent; title: string; body: string; icon: keyof typeof Ionicons.glyphMap; say: string }[] = [
@@ -180,13 +183,17 @@ export default function IntroScreen() {
     }
   }, [flyTo, setUserLocation]);
 
+  // Spoken answers are routed through refs so a question asked several renders ago still lands on current state.
+  const answers = useRef({ intent: (_heard: string) => {}, listing: (_heard: string) => {} });
+
   const showIntent = useCallback(() => {
     setStep((s) => (s === "intent" || s === "listing" ? s : "intent"));
     if (greeted.current) return;
     greeted.current = true;
-    suza.greet(
+    suza.ask(
       intentQuestion(place?.label ?? DEMO_TARGET.label),
-      choices.map((c) => ({ label: c.title, value: c.say }))
+      choices.map((c) => ({ label: c.title, value: c.say })),
+      (heard) => answers.current.intent(heard)
     );
   }, [place, suza]);
 
@@ -199,8 +206,47 @@ export default function IntroScreen() {
     setCamera({ latitude: target.point.lat, longitude: target.point.lng, latitudeDelta: 6, longitudeDelta: 6 });
     setOnboardingDone(true);
     setVoice({ replayIntro: false });
+    // Suza keeps leading on the map: next question, then what she found.
+    useDiscovery.getState().setGuided(true);
     router.replace("/(tabs)");
   }
+
+  // Refresh the spoken-answer handlers after every render so they always see current state.
+  useEffect(() => {
+    /** What they said to "rent, buy, stay, or sell / rent out?" */
+    answers.current.intent = (heard: string) => {
+      const parsed = parseUtterance(heard);
+      const intent = parsed.intent;
+      if (!intent) {
+        suza.ask(NOT_CAUGHT_INTENT, choices.map((c) => ({ label: c.title, value: c.say })), (h) => answers.current.intent(h));
+        return;
+      }
+      const choice = choices.find((c) => c.intent === intent);
+      if (intent === "list" && parsed.listing && (parsed.listing.purpose === "sell" || parsed.listing.duration)) {
+        // "I want to sell my flat" / "rent it out long-term": no need to ask again.
+        void chooseListing(parsed.listing.purpose === "sell" ? "sell" : `rent out ${parsed.listing.duration ?? "long"}-term`);
+        return;
+      }
+      if (choice) void choose(choice);
+    };
+
+    /** What they said to "selling, or renting it out?" */
+    answers.current.listing = (heard: string) => {
+      const sell = /\b(sell|selling|sale)\b/i.test(heard);
+      const duration = /\b(short|holiday|vacation|nightly|weekly)/i.test(heard)
+        ? "short"
+        : /\bseason/i.test(heard)
+          ? "seasonal"
+          : /\b(long|year|permanent)/i.test(heard)
+            ? "long"
+            : undefined;
+      if (!sell && !/\b(rent|let|lease)/i.test(heard) && !duration) {
+        suza.ask("Sorry, I missed that. Selling, or renting it out?", listChoices, (h) => answers.current.listing(h));
+        return;
+      }
+      void chooseListing(sell ? "sell" : `rent out ${duration ?? "long"}-term`);
+    };
+  });
 
   async function choose(c: (typeof choices)[number]) {
     haptic.select();
@@ -208,7 +254,7 @@ export default function IntroScreen() {
     if (c.intent === "list") {
       setIntent("list");
       setStep("listing");
-      suza.greet("Lovely — are you selling, or renting it out? And if renting, short-term, seasonal or long-term?", listChoices);
+      suza.ask(LISTING_QUESTION, listChoices, (heard) => answers.current.listing(heard));
       return;
     }
     landOnMap(c.intent);
@@ -219,6 +265,8 @@ export default function IntroScreen() {
     await suza.interrupt();
     setOnboardingDone(true);
     setVoice({ replayIntro: false });
+    // The listing builder picks the guide up and talks them through it.
+    useDiscovery.getState().setGuided(true);
     const sell = /sell/i.test(value);
     const duration = /short/i.test(value) ? "short" : /season/i.test(value) ? "seasonal" : /long/i.test(value) ? "long" : "";
     router.replace({ pathname: "/create-listing", params: { purpose: sell ? "sell" : "rent_out", duration, from: "intro" } });
@@ -404,7 +452,7 @@ export default function IntroScreen() {
               <PressableScale
                 pressedScale={0.92}
                 haptics
-                onPress={() => (suza.state === "listening" ? void suza.stopListening().then(route) : void suza.startListening())}
+                onPress={() => (suza.state === "listening" ? void suza.stopListening() : void suza.listenFor((heard) => (step === "listing" ? answers.current.listing(heard) : answers.current.intent(heard))))}
                 style={[styles.mic, suza.state === "listening" && styles.micActive]}
               >
                 <Ionicons name={suza.state === "listening" ? "checkmark" : "mic"} size={18} color={colors.white} />
@@ -420,14 +468,6 @@ export default function IntroScreen() {
   );
 
   /** After a spoken answer, read the intent Suza set and continue the flow. */
-  function route() {
-    const intent = useDiscovery.getState().intent;
-    if (intent === "list") {
-      setStep("listing");
-      return;
-    }
-    if (intent) landOnMap(intent);
-  }
 }
 
 const styles = StyleSheet.create({

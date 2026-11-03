@@ -42,11 +42,18 @@ interface DiscoveryState {
   asked: string[];
   /** The user said "just show me everything": stop asking qualifying questions. */
   showAll: boolean;
+  /**
+   * Suza is leading a voice-first journey (from the intro until results are
+   * shown or a listing is published): she asks the next question herself and
+   * listens for the answer. Session-only; never restored on relaunch.
+   */
+  guided: boolean;
   voice: VoicePrefs;
 
   setOnboardingDone: (done: boolean) => void;
   markAsked: (key: string) => void;
   setShowAll: (showAll: boolean) => void;
+  setGuided: (guided: boolean) => void;
   setIntent: (intent: Intent | null) => void;
   setCriteria: (patch: Partial<SearchCriteria>) => void;
   replaceCriteria: (criteria: SearchCriteria) => void;
@@ -93,6 +100,7 @@ const initialState = {
   messages: [],
   asked: [],
   showAll: false,
+  guided: false,
   voice: { speak: true, replayIntro: false },
 };
 
@@ -113,6 +121,7 @@ export const useDiscovery = create<DiscoveryState>()(
       setOnboardingDone: (onboardingDone) => set({ onboardingDone }),
       markAsked: (key) => set((s) => (s.asked.includes(key) ? {} : { asked: [...s.asked, key] })),
       setShowAll: (showAll) => set({ showAll }),
+      setGuided: (guided) => set({ guided }),
       setIntent: (intent) =>
         set((s) => ({ intent, criteria: { ...s.criteria, intent: intent && intent !== "list" ? intent : s.criteria.intent } })),
       setCriteria: (patch) => set((s) => ({ criteria: { ...s.criteria, ...patch } })),
