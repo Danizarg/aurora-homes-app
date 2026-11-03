@@ -31,16 +31,24 @@ void main() {
   float ndl = dot(n, normalize(uLightDir));
   // A narrow terminator rather than a toon band: the photograph on the day
   // side, continents only just readable in cold blue on the night side.
-  float day = smoothstep(-0.16, 0.34, ndl);
-  vec3 night = albedo * vec3(0.035, 0.055, 0.105);
-  vec3 lit = albedo * (0.20 + 0.92 * max(ndl, 0.0));
+  float day = smoothstep(-0.12, 0.30, ndl);
+  // The night side is moonlit, not black: continents and coasts stay readable in cool blue.
+  vec3 night = albedo * vec3(0.10, 0.13, 0.20) + vec3(0.006, 0.010, 0.022);
+  vec3 lit = albedo * (0.22 + 0.90 * max(ndl, 0.0));
   vec3 color = mix(night, lit, day);
-  // City lights, from NASA's night-lights raster, only where the sun has left.
-  float lights = texture2D(uLights, vUv).r;
-  color += vec3(1.0, 0.80, 0.52) * lights * (1.0 - day) * 1.45;
+  // City lights from NASA's night-lights raster, only where the sun has left:
+  // a sharp core plus a wider soft glow from four offset taps, in warm sodium amber.
+  vec2 px = vec2(1.0 / 2048.0, 1.0 / 1024.0) * 1.8;
+  float core = texture2D(uLights, vUv).r;
+  float glow = texture2D(uLights, vUv + vec2(px.x, 0.0)).r + texture2D(uLights, vUv - vec2(px.x, 0.0)).r
+             + texture2D(uLights, vUv + vec2(0.0, px.y)).r + texture2D(uLights, vUv - vec2(0.0, px.y)).r;
+  float lights = min(1.0, core * 1.6 + glow * 0.22);
+  float dark = 1.0 - day;
+  color += vec3(1.0, 0.78, 0.46) * lights * dark * 1.9;
+  color += vec3(1.0, 0.62, 0.30) * glow * 0.08 * dark;
   // Atmosphere on the limb, brightest where it catches the sun.
   float fres = pow(1.0 - max(dot(n, v), 0.0), 3.2);
-  color += vec3(0.26, 0.52, 1.0) * fres * (0.16 + day * 1.25);
+  color += vec3(0.26, 0.52, 1.0) * fres * (0.22 + day * 1.2);
   gl_FragColor = vec4(color, 1.0);
 }`;
 
