@@ -45,8 +45,8 @@ export default function MessagesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
         <View style={styles.headerActions}>
-          <IconButton icon="search" size={40} variant="outline" />
-          <IconButton icon="calendar-outline" size={40} variant="outline" onPress={() => router.push("/bookings")} />
+          <IconButton icon="search" accessibilityLabel="Search messages" size={40} variant="outline" />
+          <IconButton icon="calendar-outline" accessibilityLabel="Bookings and viewings" size={40} variant="outline" onPress={() => router.push("/bookings")} />
         </View>
       </View>
 

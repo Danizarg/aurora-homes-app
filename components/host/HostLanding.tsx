@@ -29,7 +29,7 @@ export function HostLanding({ title, subtitle, imageSeed, stepsTitle, steps, dis
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <IconButton icon="chevron-back" variant="outline" size={36} onPress={() => router.back()} />
+        <IconButton icon="chevron-back" accessibilityLabel="Back" variant="outline" size={36} onPress={() => router.back()} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>{title}</Text>

@@ -110,7 +110,7 @@ export default function SearchModal() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.top}>
-        <IconButton icon="close" variant="outline" size={36} onPress={() => router.back()} />
+        <IconButton icon="close" accessibilityLabel="Close" variant="outline" size={36} onPress={() => router.back()} />
         <View style={styles.modeTabs}>
           {intents.map((i) => (
             <Pressable key={i.key} onPress={() => { haptic.select(); setLocalIntent(i.key); }} style={styles.modeTab}>

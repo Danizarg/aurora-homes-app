@@ -36,13 +36,20 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
   const textColor = textColors[variant];
+  // While loading the label is swapped for a spinner, so VoiceOver needs the
+  // label and the busy state spelled out rather than read from the children.
+  const a11y = {
+    accessibilityRole: "button" as const,
+    accessibilityLabel: label,
+    accessibilityState: { disabled: !!isDisabled, busy: !!loading },
+  };
 
   const content = loading ? (
     <ActivityIndicator color={textColor} />
   ) : (
     <View style={styles.inner}>
       {icon ? <Ionicons name={icon} size={18} color={textColor} style={{ marginRight: spacing.sm }} /> : null}
-      <Text style={[styles.label, sizeText[size], { color: textColor }, variant === "link" && styles.linkLabel]}>
+      <Text numberOfLines={1} style={[styles.label, sizeText[size], { color: textColor }, variant === "link" && styles.linkLabel]}>
         {label}
       </Text>
     </View>
@@ -50,7 +57,7 @@ export function Button({
 
   if (variant === "link") {
     return (
-      <Pressable onPress={onPress} disabled={isDisabled} hitSlop={6} style={({ pressed }) => [pressed && styles.pressed, style]}>
+      <Pressable onPress={onPress} disabled={isDisabled} hitSlop={6} {...a11y} style={({ pressed }) => [pressed && styles.pressed, style]}>
         {content}
       </Pressable>
     );
@@ -60,8 +67,10 @@ export function Button({
     <PressableScale
       onPress={onPress}
       disabled={isDisabled}
+      hitSlop={sizeSlop[size]}
       pressedScale={0.96}
       haptics
+      {...a11y}
       style={[styles.base, sizeStyles[size], variantStyles[variant], isDisabled && styles.disabled, style]}
     >
       {variant === "primary" ? (
@@ -97,6 +106,13 @@ const sizeStyles: Record<NonNullable<ButtonProps["size"]>, ViewStyle> = {
   sm: { height: 36, paddingHorizontal: spacing.md, borderRadius: radius.pill },
   md: { height: layout.buttonHeight },
   lg: { height: 56, paddingHorizontal: spacing.xl },
+};
+
+// sm draws at 36pt; 4pt of slop above and below makes the tap target Apple's 44.
+const sizeSlop: Record<NonNullable<ButtonProps["size"]>, number | undefined> = {
+  sm: 4,
+  md: undefined,
+  lg: undefined,
 };
 
 const sizeText: Record<NonNullable<ButtonProps["size"]>, { fontSize: number }> = {
