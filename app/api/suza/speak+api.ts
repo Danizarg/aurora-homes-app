@@ -2,7 +2,8 @@
  * /api/suza/speak — Suza's neural voice.
  *
  * POST { text }  → synthesises the line with an OpenAI-compatible text-to-speech
- *                  endpoint, then shapes it on the server: a soft, slightly
+ *                  endpoint, then shapes it on the server: its S and Z sounds
+ *                  softened, then a soft, slightly
  *                  echoing, room-around-her delivery (early reflections, a
  *                  low-passed feedback echo and a stereo spread) so it sounds
  *                  like a calm presence in a space rather than a flat phone
@@ -30,7 +31,7 @@ const TTS_INSTRUCTIONS =
 const MAX_CHARS = 600;
 const CACHE_MAX = 80;
 /** Bump when `shape` changes so cached clips are re-rendered. */
-const SHAPE_VERSION = 3;
+const SHAPE_VERSION = 4;
 
 function key() {
   return process.env.SUZA_TTS_API_KEY || process.env.SUZA_STT_API_KEY || process.env.OPENAI_API_KEY || "";
@@ -135,14 +136,116 @@ function encodeWav(left: Float32Array, right: Float32Array, sampleRate: number):
   return out;
 }
 
+// ---------------------------------------------------------------- the voice
+
+/** A second-order Butterworth low- or high-pass, run over a whole buffer. */
+function biquad(input: Float32Array, sr: number, type: "lp" | "hp", freq: number): Float32Array {
+  const w = (2 * Math.PI * freq) / sr;
+  const cos = Math.cos(w);
+  const alpha = Math.sin(w) / Math.SQRT2;
+  const b0 = type === "lp" ? (1 - cos) / 2 : (1 + cos) / 2;
+  const b1 = type === "lp" ? 1 - cos : -(1 + cos);
+  const a0 = 1 + alpha;
+  const a1 = -2 * cos;
+  const a2 = 1 - alpha;
+  const out = new Float32Array(input.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < input.length; i++) {
+    const x0 = input[i];
+    const y0 = (b0 * x0 + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2) / a0;
+    x2 = x1; x1 = x0; y2 = y1; y1 = y0;
+    out[i] = y0;
+  }
+  return out;
+}
+
+/**
+ * The same filter run forwards and then backwards over the clip: twice as
+ * steep, and with no phase shift. That matters when the band it splits off is
+ * subtracted from the voice. A one-way high-pass is shifted against the voice
+ * near its cutoff, so subtracting it barely cancels there: at full strength
+ * it took about 4 dB off the hiss band, however hard it was pushed.
+ */
+function zeroPhase(input: Float32Array, sr: number, type: "lp" | "hp", freq: number): Float32Array {
+  return biquad(biquad(input, sr, type, freq).reverse(), sr, type, freq).reverse();
+}
+
+/**
+ * A clip's vowel level: the median RMS of its voiced 10 ms frames, where the
+ * body of the voice (100 Hz–3.5 kHz) clearly outweighs the hiss band. 0 when
+ * there is too little voiced speech to tell.
+ */
+function vowelLevel(x: Float32Array, sr: number): number {
+  const body = biquad(biquad(x, sr, "hp", 100), sr, "lp", 3500);
+  const hiss = biquad(x, sr, "hp", 4500);
+  const frame = Math.round(sr * 0.01);
+  const levels: number[] = [];
+  for (let s = 0; s + frame <= x.length; s += frame) {
+    let b = 0, h = 0;
+    for (let i = s; i < s + frame; i++) { b += body[i] * body[i]; h += hiss[i] * hiss[i]; }
+    const rms = Math.sqrt(b / frame);
+    if (rms > 0.0056 && b > 16 * h) levels.push(rms); // above -45 dBFS, hiss 12 dB down
+  }
+  if (levels.length < 5) return 0;
+  levels.sort((a, b) => a - b);
+  return levels[Math.floor(levels.length / 2)];
+}
+
+/**
+ * Soften her S and Z sounds. The model's own voice puts them well above her
+ * vowels (measured on the dry output: the 4.5 kHz-and-up band ran 3–6 dB over
+ * the vowel level in the middle of an "s" and 10–11 dB over it at the
+ * loudest), and a phone speaker is brightest right there, so they sizzle.
+ * Rewording the voice instructions made no measurable difference. This turns
+ * down only that band, and only while it is louder than this clip's own
+ * vowels, so vowels keep their air.
+ */
+function deEss(voice: Float32Array, sr: number): Float32Array {
+  const ms = (x: number) => Math.round((sr * x) / 1000);
+  // The hiss band may come up to her vowel level before it is turned down.
+  const threshold = vowelLevel(voice, sr);
+  if (!threshold) return voice;
+  const hiss = zeroPhase(voice, sr, "hp", 4500);
+
+  // Follow the hiss band and work out how far to turn it down: 3:1 above the
+  // vowel level, never by more than 10 dB, or the S starts to sound lisped.
+  // The 25 ms release lets the vowel after an S get its air back; 40 ms
+  // dulled it measurably, and anything faster let S sounds back in.
+  const attack = 1 - Math.exp(-1 / (sr * 0.001));
+  const release = 1 - Math.exp(-1 / (sr * 0.025));
+  const ratio = 3;
+  const floor = Math.pow(10, -10 / 20);
+  const gain = new Float32Array(voice.length);
+  let power = 0;
+  for (let i = 0; i < voice.length; i++) {
+    const p = hiss[i] * hiss[i];
+    power += (p - power) * (p > power ? attack : release);
+    const env = Math.sqrt(power);
+    gain[i] = env > threshold ? Math.max(floor, Math.pow(threshold / env, 1 - 1 / ratio)) : 1;
+  }
+
+  // The whole clip is here, so look 2 ms ahead: the turn-down is already in
+  // place when an S starts, instead of catching up after its sharpest edge.
+  const ahead = ms(2);
+  const out = new Float32Array(voice.length);
+  for (let i = 0; i < voice.length; i++) {
+    let g = gain[i];
+    for (let j = 1; j <= ahead && i + j < voice.length; j++) g = Math.min(g, gain[i + j]);
+    out[i] = voice[i] - (1 - g) * hiss[i];
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the room
 
 /**
  * Soft, echoing, spatial: a few early reflections spread left/right, a
  * low-passed feedback echo for the tail, a short Haas offset between the
- * ears for width, and the dry voice kept clearly in front of it all.
+ * ears for width, and the dry voice kept clearly in front of it all. It all
+ * starts from the de-essed voice, so no echo carries a sharper S than the voice.
  */
-function shape(mono: Float32Array, sr: number): { left: Float32Array; right: Float32Array } {
+function shape(raw: Float32Array, sr: number): { left: Float32Array; right: Float32Array } {
+  const mono = deEss(raw, sr);
   // Room for the echo to die in. It is working space, not the length of the
   // clip: whatever is left unused gets trimmed off the end before returning.
   const tailMs = 900;
@@ -187,10 +290,19 @@ function shape(mono: Float32Array, sr: number): { left: Float32Array; right: Flo
     if (i + ms(7) < n) right[i + ms(7)] += buf[i] * wet;
   }
 
-  // Normalise to -1.5 dBFS.
+  // Set her loudness from her vowels, not from her loudest instant. Normalising
+  // to the peak let the sharpest S in each line decide how loud the whole line
+  // was: S-heavy lines came out up to 7 dB quieter than the rest, and with the
+  // S sounds tamed most lines would have jumped several dB louder than the
+  // voice people know. -25 dBFS is where her vowels sat in the lines measured
+  // before this change; the old -1.5 dBFS peak ceiling still applies.
+  const mix = new Float32Array(n);
+  for (let i = 0; i < n; i++) mix[i] = (left[i] + right[i]) / 2;
+  const vowels = vowelLevel(mix, sr);
   let peak = 0;
   for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
-  const g = peak > 0 ? 0.84 / peak : 1;
+  const byPeak = peak > 0 ? 0.84 / peak : 1;
+  const g = vowels > 0 ? Math.min(Math.pow(10, -25 / 20) / vowels, byPeak) : byPeak;
   for (let i = 0; i < n; i++) { left[i] *= g; right[i] *= g; }
 
   // Cut the dead air off the end. The echo is inaudible long before the 900 ms
