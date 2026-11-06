@@ -24,10 +24,16 @@ import { join } from "node:path";
 
 const TTS_URL = process.env.SUZA_TTS_URL || "https://api.openai.com/v1/audio/speech";
 const TTS_MODEL = process.env.SUZA_TTS_MODEL || "gpt-4o-mini-tts";
-const TTS_VOICE = process.env.SUZA_TTS_VOICE || "sage";
+// marin, steered towards the reference voice the user chose: female, neutral
+// American, mid pitch, smooth and warm, soft S sounds, calm authority. Of the
+// OpenAI voices it measured closest on pitch (197 vs 202 Hz), breath in the
+// vowels and warmth. sage, the voice before, was breathier and slower.
+const TTS_VOICE = process.env.SUZA_TTS_VOICE || "marin";
+// gpt-4o-mini-tts ignores `speed`, so pace is set here. "Unhurried" in the old
+// wording took nearly twice as long as the reference to say the same sentence.
 const TTS_INSTRUCTIONS =
   process.env.SUZA_TTS_INSTRUCTIONS ||
-  "You are Suza, a calm, composed AI companion with the poise of a classic film computer assistant. Speak softly and unhurriedly, warm and intimate, slightly breathy, with gentle wonder, as if from a quiet, spacious room. Never bright, chirpy or salesy. Natural human phrasing, light British poise.";
+  "You are Suza, a calm, reassuring property companion. Speak in a smooth, warm voice with a neutral American accent: mid pitch with gentle, natural movement and precise, clear articulation. Sound confident and composed, with quiet authority and a soothing warmth. Keep the voice fully voiced and smooth, never breathy, whispery or airy, and keep s and z sounds soft. Never bright, chirpy or salesy. Speak at a natural, conversational pace: steady and unrushed, but never slow or drawn out.";
 const MAX_CHARS = 600;
 const CACHE_MAX = 80;
 /** Bump when `shape` changes so cached clips are re-rendered. */
@@ -333,7 +339,7 @@ async function synthesise(text: string): Promise<Clip> {
     const res = await fetch(TTS_URL, {
       method: "POST",
       headers: { authorization: `Bearer ${key()}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: text, instructions: TTS_INSTRUCTIONS, response_format: "wav", speed: 0.95 }),
+      body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: text, instructions: TTS_INSTRUCTIONS, response_format: "wav" }),
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -395,7 +401,11 @@ export async function POST(request: Request) {
     if (!job) {
       job = synthesise(text);
       pending.set(id, job);
-      job.finally(() => pending.delete(id));
+      // `finally` returns a second promise that rejects with the first. Left alone,
+      // that rejection goes unhandled, and Node ends the process on it, so one
+      // failed line (a timeout, a used-up quota) would take the server down.
+      const forget = () => { pending.delete(id); };
+      job.then(forget, forget);
     }
     const clip = await job;
     await remember(id, clip);
