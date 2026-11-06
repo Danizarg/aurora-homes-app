@@ -143,10 +143,10 @@ export default function ListingDetailScreen() {
           </ScrollView>
           </Animated.View>
           <Animated.View style={[styles.galleryControls, { top: insets.top + spacing.sm }, overlayStyle]}>
-            <IconButton icon="chevron-back" variant="overlay" onPress={() => router.back()} />
+            <IconButton icon="chevron-back" accessibilityLabel="Back" variant="overlay" onPress={() => router.back()} />
             <View style={styles.galleryRight}>
-              <IconButton icon="share-outline" variant="overlay" />
-              <IconButton icon={saved ? "heart" : "heart-outline"} variant="overlay" color={saved ? colors.primary : colors.text} onPress={toggleSave} />
+              <IconButton icon="share-outline" accessibilityLabel="Share" variant="overlay" />
+              <IconButton icon={saved ? "heart" : "heart-outline"} accessibilityLabel={saved ? "Remove from wishlist" : "Save to wishlist"} selected={saved} variant="overlay" color={saved ? colors.primary : colors.text} onPress={toggleSave} />
             </View>
           </Animated.View>
           <View style={styles.galleryCounter}>
@@ -356,9 +356,9 @@ export default function ListingDetailScreen() {
         <BlurView tint="light" intensity={60} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
         <View style={styles.collapsedTint} />
         <View style={styles.collapsedRow}>
-          <IconButton icon="chevron-back" variant="plain" size={40} onPress={() => router.back()} />
+          <IconButton icon="chevron-back" accessibilityLabel="Back" variant="plain" size={40} onPress={() => router.back()} />
           <Text style={styles.collapsedTitle} numberOfLines={1}>{listing.title}</Text>
-          <IconButton icon={saved ? "heart" : "heart-outline"} variant="plain" size={40} color={saved ? colors.primary : colors.text} onPress={toggleSave} />
+          <IconButton icon={saved ? "heart" : "heart-outline"} accessibilityLabel={saved ? "Remove from wishlist" : "Save to wishlist"} selected={saved} variant="plain" size={40} color={saved ? colors.primary : colors.text} onPress={toggleSave} />
         </View>
       </Animated.View>
 

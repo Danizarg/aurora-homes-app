@@ -31,14 +31,22 @@ export default function SignupScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader title="Finish signing up" leading="back" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <TextField label="Full name" value={fullName} onChangeText={setFullName} placeholder="Jane Owner" helper="Make sure this matches the name on your ID." />
+        <TextField label="Full name" value={fullName} onChangeText={setFullName} placeholder="Jane Owner" />
         <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" helper="We'll email you listing enquiries and viewing confirmations." />
         <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 8 characters" />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Text style={styles.terms}>
-          By selecting Agree and continue, I agree to Zouza’s Terms of Service and acknowledge the Privacy Policy.
+          By selecting Agree and continue, I agree to Zouza’s{" "}
+          <Text style={styles.termsLink} accessibilityRole="link" onPress={() => router.push("/legal/terms")}>
+            Terms of Service
+          </Text>{" "}
+          and acknowledge the{" "}
+          <Text style={styles.termsLink} accessibilityRole="link" onPress={() => router.push("/legal/privacy")}>
+            Privacy Policy
+          </Text>
+          .
         </Text>
 
         <Button label="Agree and continue" loading={loading} onPress={handleSignup} style={{ marginTop: spacing.md }} />
@@ -56,5 +64,6 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   error: { ...typography.small, color: colors.error, marginBottom: spacing.sm },
   terms: { ...typography.micro, lineHeight: 18, color: colors.textSecondary, marginTop: spacing.sm },
+  termsLink: { color: colors.text, textDecorationLine: "underline" },
   link: { ...typography.smallBold, color: colors.text, textDecorationLine: "underline" },
 });

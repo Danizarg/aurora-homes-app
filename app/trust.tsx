@@ -5,13 +5,15 @@ import { colors, spacing, typography } from "../constants/theme";
 import { Card } from "../components/ui/Card";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
 
+// Only what is true today. Zouza has no ownership checks yet, so this page
+// describes how Zouza works and what to check yourself, not a verification
+// process. When verification exists, it can come back here.
 const sections: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
-  { icon: "person-circle-outline", title: "Owner verification", body: "Owners can verify their identity so renters and buyers know who they are dealing with. Verified owners display an 'Owner verified' badge on their listings." },
-  { icon: "home-outline", title: "Property verification", body: "Properties can be verified through submitted proof of ownership or listing authorization, reviewed periodically to keep listings accurate." },
-  { icon: "document-text-outline", title: "Proof of ownership", body: "Owners may be asked to provide a deed, utility bill, or signed authorization confirming they have the right to list the property." },
-  { icon: "videocam-outline", title: "Video walkthrough", body: "For an extra layer of trust, owners can optionally record a short video walkthrough confirming the property matches its listing." },
-  { icon: "time-outline", title: "Last verified date", body: "Every verified listing shows the date it was last checked, so buyers and renters know how current the information is." },
-  { icon: "flag-outline", title: "Report a listing", body: "Any user can report a listing that looks fake, outdated, or misleading. Reports are reviewed and acted on promptly." },
+  { icon: "people-outline", title: "Zouza is a go-between", body: "Agreements, rent, deposits and purchase payments are made directly between you and the owner, outside Zouza. Zouza isn't a party to them and never holds your money." },
+  { icon: "home-outline", title: "Listings come from owners", body: "Owners provide the facts and photos, and Zouza helps write the listing from them. Check the details that matter to you, and ask the owner about anything that's missing." },
+  { icon: "chatbubble-ellipses-outline", title: "Answers can be wrong", body: "Zouza's answers about a home come from what the owner provided. They can be incomplete or, occasionally, incorrect, so confirm anything important with the owner." },
+  { icon: "key-outline", title: "Before you pay anything", body: "See the home in person or on a live video call, ask for proof that the owner can rent or sell it, and never send a deposit to someone you haven't checked." },
+  { icon: "flag-outline", title: "Something looks wrong?", body: "If a listing seems fake or misleading, tell us through Contact Zouza in your profile." },
 ];
 
 export default function TrustScreen() {
@@ -19,8 +21,8 @@ export default function TrustScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader leading="back" border={false} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>How verification works</Text>
-        <Text style={styles.subtitle}>Every verified home on Zouza is checked against ownership documents and re-checked over time.</Text>
+        <Text style={styles.title}>Staying safe on Zouza</Text>
+        <Text style={styles.subtitle}>How Zouza works, and what to check before you commit to a home.</Text>
 
         {sections.map((s, i) => (
           <View key={s.title} style={[styles.row, i === sections.length - 1 && { borderBottomWidth: 0 }]}>
@@ -33,10 +35,10 @@ export default function TrustScreen() {
         ))}
 
         <Card variant="flat" style={{ marginTop: spacing.lg }}>
-          <Text style={styles.rowTitle}>No guarantee disclaimer</Text>
+          <Text style={styles.rowTitle}>No guarantees</Text>
           <Text style={styles.rowBody}>
-            Verification improves confidence but is not a guarantee. Zouza does not guarantee tenants, buyers,
-            contracts, rent payments, or legal outcomes. Always exercise your own diligence before transacting.
+            Zouza doesn’t guarantee tenants, buyers, contracts, rent payments or legal outcomes. Always do your own
+            checks before you commit.
           </Text>
         </Card>
       </ScrollView>

@@ -43,7 +43,7 @@ export default function ConversationScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
-        <IconButton icon="chevron-back" variant="plain" size={40} onPress={() => router.back()} />
+        <IconButton icon="chevron-back" accessibilityLabel="Back" variant="plain" size={40} onPress={() => router.back()} />
         <Pressable style={styles.headerCenter} onPress={() => conversation && router.push(`/listing/${conversation.listing_id}`)}>
           <Avatar name={name} size={32} />
           <View style={{ marginLeft: spacing.sm }}>
@@ -51,7 +51,7 @@ export default function ConversationScreen() {
             <Text style={styles.headerSubtitle} numberOfLines={1}>{conversation?.listing_title}</Text>
           </View>
         </Pressable>
-        <IconButton icon="ellipsis-horizontal" variant="plain" size={40} />
+        <IconButton icon="ellipsis-horizontal" accessibilityLabel="More options" variant="plain" size={40} />
       </View>
 
       {booking ? (

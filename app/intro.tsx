@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, FadeOut, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { Globe, type GlobePhase } from "../components/globe/Globe";
 import { PressableScale } from "../components/ui/PressableScale";
 import { ZMark } from "../components/brand/ZMark";
@@ -56,6 +56,20 @@ type Step = "earth" | "where" | "flying" | "intent" | "listing";
  */
 export default function IntroScreen() {
   const insets = useSafeAreaInsets();
+  // The native splash is light and this screen is space-dark, so cutting
+  // straight from one to the other flashes white on first launch. Open under a
+  // sheet of the splash colour and dissolve it into the night.
+  // The sheet is also unmounted on a plain timer, with no exit animation that
+  // could hold it on screen: if the fade ever fails to run, the worst case is
+  // the splash colour lasting a little longer, never a sheet stuck over the globe.
+  const veil = useSharedValue(1);
+  const veilStyle = useAnimatedStyle(() => ({ opacity: veil.get() }));
+  const [veiled, setVeiled] = useState(true);
+  useEffect(() => {
+    veil.set(withTiming(0, { duration: 450 }));
+    const t = setTimeout(() => setVeiled(false), 600);
+    return () => clearTimeout(t);
+  }, [veil]);
   const suza = useSuza();
   const stt = useSpeechToText();
   const setIntent = useDiscovery((s) => s.setIntent);
@@ -464,6 +478,7 @@ export default function IntroScreen() {
           </View>
         </Animated.View>
       ) : null}
+      {veiled ? <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.veil, veilStyle]} /> : null}
     </View>
   );
 
@@ -472,6 +487,8 @@ export default function IntroScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#04050d" },
+  /** Must match the expo-splash-screen backgroundColor in app.json. */
+  veil: { backgroundColor: "#FAF9FC" },
   status: { position: "absolute", left: spacing.lg, right: spacing.lg, alignItems: "center" },
   statusText: { ...typography.bodyMedium, color: "rgba(255,255,255,0.9)", textAlign: "center" },
   skip: { position: "absolute", right: spacing.md, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.14)" },
