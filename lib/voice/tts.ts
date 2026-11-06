@@ -1,6 +1,7 @@
 import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
+import { Directory, File, Paths } from "expo-file-system";
 import { suzaEndpointReady, suzaUrl } from "../suza/api";
 
 /**
@@ -102,18 +103,34 @@ async function speakRemotely(text: string, id: number, options: SpeakOptions): P
   }
   if (id !== utterance) return true; // interrupted while synthesising: nothing to play, nothing to fall back to
 
+  const clipUrl = suzaUrl(`/api/suza/clip/${encodeURIComponent(clipId)}.wav`);
+  if (!clipUrl) return false;
+
+  // The web streams the clip. Phones fetch it to a file first and play that:
+  // a plain download whose result can be checked, with no byte-range or
+  // tunnel quirks, and a repeated line costs no network at all.
+  let source = clipUrl;
+  if (Platform.OS !== "web") {
+    try {
+      source = await fetchClipToFile(clipUrl, clipId);
+    } catch (e) {
+      console.warn(`[suza voice] could not fetch clip ${clipId} from ${clipUrl}; using the device voice`, e);
+      return false;
+    }
+    if (id !== utterance) return true;
+  }
+
   try {
     await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(() => {});
     releasePlayer();
-    // Phones download the clip first (no streaming quirks over a tunnel); the web streams it.
-    // The address must end in ".wav": expo-audio names the download after its
-    // extension and guesses ".mp3" when there is none, which iOS can't open.
-    const clipUrl = suzaUrl(`/api/suza/clip/${encodeURIComponent(clipId)}.wav`) ?? `${url}?id=${encodeURIComponent(clipId)}`;
-    const p = createAudioPlayer({ uri: clipUrl }, { updateInterval: 150, downloadFirst: Platform.OS !== "web" });
+    // Never `downloadFirst`: expo-audio then creates the player empty and swaps
+    // the clip in later, and on iOS a play() asked of an empty player is lost
+    // in that swap, so the clip sat loaded and silent until the guard fired.
+    const p = createAudioPlayer({ uri: source }, { updateInterval: 150 });
     player = p;
     return await new Promise<boolean>((resolve) => {
       let started = false;
-      let playRequested = false;
+      let playedOnceLoaded = false;
       let settled = false;
       const settle = (ok: boolean) => {
         if (settled) return;
@@ -123,7 +140,7 @@ async function speakRemotely(text: string, id: number, options: SpeakOptions): P
       // If nothing is audible within this long, give the line to the device voice instead.
       const guard = setTimeout(() => {
         if (started || id !== utterance) return;
-        console.warn("[suza voice] clip did not start playing in time; using the device voice");
+        console.warn(`[suza voice] clip ${clipId} never started playing (source ${source}); using the device voice`);
         releasePlayer();
         settle(false);
       }, 9_000);
@@ -132,11 +149,14 @@ async function speakRemotely(text: string, id: number, options: SpeakOptions): P
           clearTimeout(guard);
           return settle(true);
         }
-        if (status.isLoaded && !playRequested) {
-          playRequested = true;
+        // The play() below may run before the clip is loaded and be dropped; this
+        // one is asked once the clip reports loaded, which is the one that sticks.
+        if (status.isLoaded && !status.playing && !started && !playedOnceLoaded) {
+          playedOnceLoaded = true;
           try {
             p.play();
-          } catch {
+          } catch (e) {
+            console.warn(`[suza voice] play() failed for clip ${clipId}; using the device voice`, e);
             clearTimeout(guard);
             releasePlayer();
             settle(false);
@@ -159,16 +179,36 @@ async function speakRemotely(text: string, id: number, options: SpeakOptions): P
       // Some platforms report loaded before the listener is attached; a play() call is harmless then.
       try {
         p.play();
-        playRequested = true;
       } catch {
-        // the listener will try again once loaded
+        // the listener asks again once loaded
       }
     });
   } catch (e) {
-    console.warn("[suza voice] playback failed; using the device voice", e);
+    console.warn(`[suza voice] playback of clip ${clipId} failed; using the device voice`, e);
     releasePlayer();
     return false;
   }
+}
+
+/** Phones keep fetched clips here; a line said twice is fetched once. */
+const CLIP_DIR = "suza-voice";
+/** Any real clip is far larger than this; an error body posing as a clip is not. */
+const MIN_CLIP_BYTES = 4096;
+
+/** Fetch the clip to the app's cache as <id>.wav and return the file's address. */
+async function fetchClipToFile(clipUrl: string, clipId: string): Promise<string> {
+  const dir = new Directory(Paths.cache, CLIP_DIR);
+  if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
+  const file = new File(dir, `${clipId}.wav`);
+  if (file.exists && (file.size ?? 0) >= MIN_CLIP_BYTES) return file.uri;
+  const fetched = await File.downloadFileAsync(clipUrl, file, { idempotent: true });
+  const size = fetched.size ?? 0;
+  if (size < MIN_CLIP_BYTES) {
+    fetched.delete();
+    throw new Error(`the server answered with ${size} bytes, not a clip`);
+  }
+  console.log(`[suza voice] fetched clip ${clipId} (${Math.round(size / 1024)} KB)`);
+  return fetched.uri;
 }
 
 function speakOnDevice(text: string, voice: string | undefined, id: number, options: SpeakOptions) {

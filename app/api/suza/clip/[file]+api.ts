@@ -11,12 +11,17 @@
 import { recall, serveClip } from "../../../../lib/suza/clipStore";
 
 export async function GET(request: Request, { file }: Record<string, string>) {
-  const clip = await recall((file ?? "").replace(/\.wav$/i, ""));
+  const id = (file ?? "").replace(/\.wav$/i, "");
+  const clip = await recall(id);
   if (!clip) {
+    console.warn(`[suza/speak] clip ${id} requested but not in the cache`);
     return new Response(JSON.stringify({ error: "Unknown clip; synthesise it again." }), {
       status: 404,
       headers: { "content-type": "application/json", "cache-control": "no-store" },
     });
   }
+  // One line per fetch in the dev server's terminal, so "did the phone get the
+  // clip?" is answered by looking, not by guessing.
+  console.log(`[suza/speak] clip ${id} sent (${Math.round(clip.wav.byteLength / 1024)} KB${request.headers.get("range") ? ", ranged" : ""})`);
   return serveClip(request, clip);
 }
