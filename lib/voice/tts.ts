@@ -106,7 +106,10 @@ async function speakRemotely(text: string, id: number, options: SpeakOptions): P
     await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false }).catch(() => {});
     releasePlayer();
     // Phones download the clip first (no streaming quirks over a tunnel); the web streams it.
-    const p = createAudioPlayer({ uri: `${url}?id=${encodeURIComponent(clipId)}` }, { updateInterval: 150, downloadFirst: Platform.OS !== "web" });
+    // The address must end in ".wav": expo-audio names the download after its
+    // extension and guesses ".mp3" when there is none, which iOS can't open.
+    const clipUrl = suzaUrl(`/api/suza/clip/${encodeURIComponent(clipId)}.wav`) ?? `${url}?id=${encodeURIComponent(clipId)}`;
+    const p = createAudioPlayer({ uri: clipUrl }, { updateInterval: 150, downloadFirst: Platform.OS !== "web" });
     player = p;
     return await new Promise<boolean>((resolve) => {
       let started = false;
