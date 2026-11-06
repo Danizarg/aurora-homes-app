@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "../constants/theme";
-import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Divider } from "../components/ui/Divider";
@@ -76,27 +75,6 @@ export default function OwnerDashboardScreen() {
           </View>
         ))}
 
-        <Divider />
-
-        <Text style={styles.sectionTitle}>Suzi activity</Text>
-        <View style={styles.statsRow}>
-          <Stat value="18" label="Questions answered" />
-          <Stat value="3" label="Qualified leads" />
-          <Stat value="2" label="Viewings requested" />
-        </View>
-
-        <Divider />
-
-        <Card>
-          <View style={styles.verifyRow}>
-            <Ionicons name="shield-checkmark-outline" size={26} color={colors.text} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.verifyTitle}>Get the Verified badge</Text>
-              <Text style={styles.muted}>Upload proof of ownership or listing authorization to appear higher in search.</Text>
-            </View>
-          </View>
-          <Button label="Start verification" variant="outline" style={{ marginTop: spacing.md }} onPress={() => router.push("/trust")} />
-        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -115,15 +93,6 @@ function ListingRow({ listing }: { listing: Listing }) {
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
@@ -138,10 +107,4 @@ const styles = StyleSheet.create({
   requestName: { ...typography.bodyMedium, color: colors.text },
   requestMeta: { ...typography.small, color: colors.textSecondary, marginTop: 2 },
   requestActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
-  statsRow: { flexDirection: "row", gap: spacing.sm + 2 },
-  stat: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
-  statValue: { ...typography.h2, color: colors.text },
-  statLabel: { ...typography.micro, color: colors.textSecondary, marginTop: spacing.xs },
-  verifyRow: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
-  verifyTitle: { ...typography.bodyBold, color: colors.text, marginBottom: 2 },
 });

@@ -31,7 +31,7 @@ export default function ForgotPasswordScreen() {
         ) : (
           <>
             <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" />
-            <Button label="Send reset link" variant="dark" loading={loading} onPress={handleSend} />
+            <Button label="Send reset link" loading={loading} onPress={handleSend} />
           </>
         )}
 

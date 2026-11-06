@@ -8,7 +8,7 @@
     "scheme": "zouza",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "ai.zouza.app"
     },
     "android": {
@@ -61,7 +61,6 @@
           "locationWhenInUsePermission": "Zouza uses your location to show how to get to a home: flights, driving time and directions."
         }
       ],
-      "expo-audio",
       "expo-asset"
     ],
     "extra": {

@@ -63,7 +63,12 @@ export default function LoginScreen() {
 
         <View style={styles.footnote}>
           <Ionicons name="lock-closed-outline" size={14} color={colors.textSecondary} />
-          <Text style={styles.footnoteText}>Your data stays private. Read our privacy policy.</Text>
+          <Text style={styles.footnoteText}>
+            How we handle your data:{" "}
+            <Text style={styles.footnoteLink} accessibilityRole="link" onPress={() => router.push("/legal/privacy")}>
+              privacy policy
+            </Text>
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -88,4 +93,5 @@ const styles = StyleSheet.create({
   link: { ...typography.smallBold, color: colors.text, textDecorationLine: "underline" },
   footnote: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: spacing.xl, justifyContent: "center" },
   footnoteText: { ...typography.micro, color: colors.textSecondary },
+  footnoteLink: { color: colors.text, textDecorationLine: "underline" },
 });
