@@ -18,9 +18,7 @@
  * SUZA_TTS_INSTRUCTIONS.
  */
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { recall, remember, serveClip, type Clip } from "../../../lib/suza/clipStore";
 
 const TTS_URL = process.env.SUZA_TTS_URL || "https://api.openai.com/v1/audio/speech";
 const TTS_MODEL = process.env.SUZA_TTS_MODEL || "gpt-4o-mini-tts";
@@ -35,7 +33,6 @@ const TTS_INSTRUCTIONS =
   process.env.SUZA_TTS_INSTRUCTIONS ||
   "You are Suza, a calm, reassuring property companion. Speak in a smooth, warm voice with a neutral American accent: mid pitch with gentle, natural movement and precise, clear articulation. Sound confident and composed, with quiet authority and a soothing warmth. Keep the voice fully voiced and smooth, never breathy, whispery or airy, and keep s and z sounds soft. Never bright, chirpy or salesy. Speak at a natural, conversational pace: steady and unrushed, but never slow or drawn out.";
 const MAX_CHARS = 600;
-const CACHE_MAX = 80;
 /** Bump when `shape` changes so cached clips are re-rendered. */
 const SHAPE_VERSION = 4;
 
@@ -49,44 +46,10 @@ function json(body: unknown, status = 200) {
 
 // ---------------------------------------------------------------- cache
 
-interface Clip {
-  wav: Uint8Array;
-  durationMs: number;
-  at: number;
-}
-const clips = new Map<string, Clip>();
+// Clips themselves live in lib/suza/clipStore.ts, shared with the .wav route.
+// This only remembers lines being synthesised right now, so a line asked for
+// twice at once is made once.
 const pending = new Map<string, Promise<Clip>>();
-// The dev server re-evaluates this module per request and a hosted server may
-// run several instances, so clips also go to disk, keyed by content hash.
-const CACHE_DIR = join(tmpdir(), "zouza-suza-voice");
-
-async function remember(id: string, clip: Clip) {
-  clips.set(id, clip);
-  if (clips.size > CACHE_MAX) {
-    const oldest = [...clips.entries()].sort((a, b) => a[1].at - b[1].at)[0];
-    if (oldest) clips.delete(oldest[0]);
-  }
-  try {
-    await mkdir(CACHE_DIR, { recursive: true });
-    await writeFile(join(CACHE_DIR, `${id}.wav`), clip.wav);
-  } catch (e) {
-    console.warn("[suza/speak] could not cache clip on disk", e);
-  }
-}
-
-async function recall(id: string): Promise<Clip | null> {
-  const inMemory = clips.get(id);
-  if (inMemory) return inMemory;
-  if (!/^[a-f0-9]{24}$/.test(id)) return null;
-  try {
-    const wav = new Uint8Array(await readFile(join(CACHE_DIR, `${id}.wav`)));
-    const clip: Clip = { wav, durationMs: 0, at: Date.now() };
-    clips.set(id, clip);
-    return clip;
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------- WAV
 
@@ -361,23 +324,7 @@ export async function GET(request: Request) {
   if (!id) return json({ ok: key().length > 0, provider: new URL(TTS_URL).host, model: TTS_MODEL, voice: TTS_VOICE });
   const clip = await recall(id);
   if (!clip) return json({ error: "Unknown clip; synthesise it again." }, 404);
-  clip.at = Date.now();
-  const total = clip.wav.byteLength;
-  const common = { "content-type": "audio/wav", "cache-control": "private, max-age=3600", "accept-ranges": "bytes" };
-  // Native players (AVPlayer in particular) fetch media with byte ranges; answer them properly.
-  const range = request.headers.get("range");
-  const m = range?.match(/^bytes=(\d*)-(\d*)$/);
-  if (m && (m[1] || m[2])) {
-    const start = m[1] ? Number(m[1]) : Math.max(0, total - Number(m[2]));
-    const end = m[1] && m[2] ? Math.min(Number(m[2]), total - 1) : total - 1;
-    if (start > end || start >= total) return new Response(null, { status: 416, headers: { ...common, "content-range": `bytes */${total}` } });
-    const part = clip.wav.subarray(start, end + 1);
-    return new Response(part as unknown as BodyInit, {
-      status: 206,
-      headers: { ...common, "content-length": String(part.byteLength), "content-range": `bytes ${start}-${end}/${total}` },
-    });
-  }
-  return new Response(clip.wav as unknown as BodyInit, { status: 200, headers: { ...common, "content-length": String(total) } });
+  return serveClip(request, clip);
 }
 
 export async function POST(request: Request) {
