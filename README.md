@@ -113,8 +113,9 @@ Opening the app feels like exploring the planet with a personal agent:
   `EXPO_PUBLIC_SUZA_REMOTE_PLANNER=true`) can replace the parser; its output
   is validated the same way and any failure falls back to the local planner.
 - **Voice** (`lib/voice/*`, `lib/suza/useSuza.ts`): replies are spoken by
-  the server's neural voice when it is configured — synthesised with an
-  OpenAI-compatible text-to-speech endpoint, then shaped on the server into a
+  the server's neural voice when it is configured — synthesised with
+  ElevenLabs when its key is set, otherwise with an OpenAI-compatible
+  text-to-speech endpoint, then shaped on the server into a
   soft, slightly echoing, spatial stereo clip (`app/api/suza/speak+api.ts`)
   and streamed to the device — and otherwise by the device's own speech
   synthesis (`expo-speech`). Mute/stop in the panel. Voice commands are hands-free:
@@ -141,7 +142,7 @@ with `EXPO_PUBLIC_SUZA_API_URL`.
 | Endpoint | Server env | Request | Response |
 |---|---|---|---|
 | `GET/POST /api/suza/transcribe` | `SUZA_STT_API_KEY` (or `OPENAI_API_KEY`), optional `SUZA_STT_URL`, `SUZA_STT_MODEL` | multipart `audio`, `language` | `{ text }`; `GET` → `{ ok }` |
-| `GET/POST /api/suza/speak` | same key as transcription (or `SUZA_TTS_API_KEY`), optional `SUZA_TTS_VOICE`, `SUZA_TTS_MODEL`, `SUZA_TTS_INSTRUCTIONS` | `POST { text }` → `{ id, durationMs }`; `GET ?id=` → stereo WAV | `GET` → `{ ok }` |
+| `GET/POST /api/suza/speak` | `ELEVENLABS_API_KEY` (optional `SUZA_ELEVENLABS_VOICE_ID`, `SUZA_ELEVENLABS_MODEL`); otherwise the transcription key (or `SUZA_TTS_API_KEY`), optional `SUZA_TTS_VOICE`, `SUZA_TTS_MODEL`, `SUZA_TTS_INSTRUCTIONS`; `SUZA_TTS_PROVIDER` forces one | `POST { text }` → `{ id, durationMs }`; `GET ?id=` → stereo WAV | `GET` → `{ ok }` |
 | `GET/POST /api/suza/plan` | `ANTHROPIC_API_KEY`, optional `SUZA_PLAN_MODEL` | `{ message, context: BrainContext }` | `{ reply, actions: SuzaAction[], question? }`; `GET` → `{ ok }` |
 
 Each route answers `GET` with `{ ok }` so the app enables voice input and

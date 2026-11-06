@@ -1,8 +1,9 @@
 /**
  * /api/suza/speak — Suza's neural voice.
  *
- * POST { text }  → synthesises the line with an OpenAI-compatible text-to-speech
- *                  endpoint, then shapes it on the server: its S and Z sounds
+ * POST { text }  → synthesises the line with ElevenLabs (when its key is set) or an
+ *                  OpenAI-compatible text-to-speech endpoint, then shapes it on
+ *                  the server: its S and Z sounds
  *                  softened, then a soft, slightly
  *                  echoing, room-around-her delivery (early reflections, a
  *                  low-passed feedback echo and a stereo spread) so it sounds
@@ -13,9 +14,10 @@
  *                  app's audio player can load it by URL.
  * GET            → { ok } health, like the other Suza routes.
  *
- * Server env (never bundled): SUZA_TTS_API_KEY or SUZA_STT_API_KEY or
- * OPENAI_API_KEY; optional SUZA_TTS_URL, SUZA_TTS_MODEL, SUZA_TTS_VOICE,
- * SUZA_TTS_INSTRUCTIONS.
+ * Server env (never bundled): ELEVENLABS_API_KEY, optional SUZA_ELEVENLABS_VOICE_ID
+ * and SUZA_ELEVENLABS_MODEL; or SUZA_TTS_API_KEY or SUZA_STT_API_KEY or
+ * OPENAI_API_KEY, optional SUZA_TTS_URL, SUZA_TTS_MODEL, SUZA_TTS_VOICE,
+ * SUZA_TTS_INSTRUCTIONS. SUZA_TTS_PROVIDER=openai|elevenlabs overrides the choice.
  */
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -28,13 +30,36 @@ const TTS_VOICE = process.env.SUZA_TTS_VOICE || "sage";
 const TTS_INSTRUCTIONS =
   process.env.SUZA_TTS_INSTRUCTIONS ||
   "You are Suza, a calm, composed AI companion with the poise of a classic film computer assistant. Speak softly and unhurriedly, warm and intimate, slightly breathy, with gentle wonder, as if from a quiet, spacious room. Never bright, chirpy or salesy. Natural human phrasing, light British poise.";
+// ElevenLabs speaks whenever its key is set, unless SUZA_TTS_PROVIDER says otherwise.
+// OpenAI stays as the voice that needs no second account.
+const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY || process.env.SUZA_ELEVENLABS_API_KEY || "";
+const PROVIDER: "elevenlabs" | "openai" =
+  process.env.SUZA_TTS_PROVIDER === "openai"
+    ? "openai"
+    : process.env.SUZA_TTS_PROVIDER === "elevenlabs" || ELEVEN_KEY
+      ? "elevenlabs"
+      : "openai";
+const ELEVEN_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+/** The voice chosen from ElevenLabs' library for her. */
+const ELEVEN_VOICE = process.env.SUZA_ELEVENLABS_VOICE_ID || "KpTQ5yzwazQWLkvnK59A";
+const ELEVEN_MODEL = process.env.SUZA_ELEVENLABS_MODEL || "eleven_multilingual_v2";
+/** Calm and even, at the same unhurried pace as the OpenAI voice. */
+const ELEVEN_SETTINGS = { stability: 0.6, similarity_boost: 0.8, style: 0, use_speaker_boost: true, speed: 0.95 };
 const MAX_CHARS = 600;
 const CACHE_MAX = 80;
 /** Bump when `shape` changes so cached clips are re-rendered. */
 const SHAPE_VERSION = 4;
 
 function key() {
+  if (PROVIDER === "elevenlabs") return ELEVEN_KEY;
   return process.env.SUZA_TTS_API_KEY || process.env.SUZA_STT_API_KEY || process.env.OPENAI_API_KEY || "";
+}
+
+/** Who is speaking, for the health check and the cache id. */
+function voiceInfo() {
+  return PROVIDER === "elevenlabs"
+    ? { provider: new URL(ELEVEN_URL).host, model: ELEVEN_MODEL, voice: ELEVEN_VOICE, cacheKey: `elevenlabs|${ELEVEN_MODEL}|${ELEVEN_VOICE}|${JSON.stringify(ELEVEN_SETTINGS)}` }
+    : { provider: new URL(TTS_URL).host, model: TTS_MODEL, voice: TTS_VOICE, cacheKey: `${TTS_MODEL}|${TTS_VOICE}|${TTS_INSTRUCTIONS}` };
 }
 
 function json(body: unknown, status = 200) {
@@ -326,19 +351,32 @@ function shape(raw: Float32Array, sr: number): { left: Float32Array; right: Floa
 
 // ---------------------------------------------------------------- synthesis
 
+/** The line as a 16-bit WAV from whichever service is speaking; both give 24 kHz mono. */
+function requestSpeech(text: string, signal: AbortSignal): Promise<Response> {
+  if (PROVIDER === "elevenlabs") {
+    return fetch(`${ELEVEN_URL}/${encodeURIComponent(ELEVEN_VOICE)}?output_format=wav_24000`, {
+      method: "POST",
+      headers: { "xi-api-key": key(), "content-type": "application/json", accept: "audio/wav" },
+      body: JSON.stringify({ text, model_id: ELEVEN_MODEL, voice_settings: ELEVEN_SETTINGS }),
+      signal,
+    });
+  }
+  return fetch(TTS_URL, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key()}`, "content-type": "application/json" },
+    body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: text, instructions: TTS_INSTRUCTIONS, response_format: "wav", speed: 0.95 }),
+    signal,
+  });
+}
+
 async function synthesise(text: string): Promise<Clip> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
   try {
-    const res = await fetch(TTS_URL, {
-      method: "POST",
-      headers: { authorization: `Bearer ${key()}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: TTS_MODEL, voice: TTS_VOICE, input: text, instructions: TTS_INSTRUCTIONS, response_format: "wav", speed: 0.95 }),
-      signal: controller.signal,
-    });
+    const res = await requestSpeech(text, controller.signal);
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`tts ${res.status} ${detail.slice(0, 200)}`);
+      throw new Error(`tts ${PROVIDER} ${res.status} ${detail.slice(0, 200)}`);
     }
     const raw = new Uint8Array(await res.arrayBuffer());
     const { samples, sampleRate } = decodeWav(raw);
@@ -352,7 +390,10 @@ async function synthesise(text: string): Promise<Clip> {
 
 export async function GET(request: Request) {
   const id = new URL(request.url).searchParams.get("id");
-  if (!id) return json({ ok: key().length > 0, provider: new URL(TTS_URL).host, model: TTS_MODEL, voice: TTS_VOICE });
+  if (!id) {
+    const { provider, model, voice } = voiceInfo();
+    return json({ ok: key().length > 0, provider, model, voice });
+  }
   const clip = await recall(id);
   if (!clip) return json({ error: "Unknown clip; synthesise it again." }, 404);
   clip.at = Date.now();
@@ -375,7 +416,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!key()) return json({ error: "Suza's voice isn't configured on this server (set SUZA_TTS_API_KEY or OPENAI_API_KEY)." }, 503);
+  if (!key()) return json({ error: "Suza's voice isn't configured on this server (set ELEVENLABS_API_KEY, or SUZA_TTS_API_KEY or OPENAI_API_KEY)." }, 503);
   let body: { text?: string };
   try {
     body = (await request.json()) as typeof body;
@@ -384,7 +425,7 @@ export async function POST(request: Request) {
   }
   const text = (body.text ?? "").toString().replace(/\s+/g, " ").trim().slice(0, MAX_CHARS);
   if (!text) return json({ error: "Nothing to say." }, 400);
-  const id = createHash("sha1").update(`${SHAPE_VERSION}|${TTS_MODEL}|${TTS_VOICE}|${TTS_INSTRUCTIONS}|${text}`).digest("hex").slice(0, 24);
+  const id = createHash("sha1").update(`${SHAPE_VERSION}|${voiceInfo().cacheKey}|${text}`).digest("hex").slice(0, 24);
   const cached = await recall(id);
   if (cached) {
     cached.at = Date.now();
@@ -395,7 +436,11 @@ export async function POST(request: Request) {
     if (!job) {
       job = synthesise(text);
       pending.set(id, job);
-      job.finally(() => pending.delete(id));
+      // `finally` returns a second promise that rejects with the first. Left alone,
+      // that rejection goes unhandled, and Node ends the process on it, so one
+      // refused line (an unknown voice, a used-up quota) would take the server down.
+      const forget = () => { pending.delete(id); };
+      job.then(forget, forget);
     }
     const clip = await job;
     await remember(id, clip);
