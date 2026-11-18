@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { Redirect, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, layout, spacing } from "../../constants/theme";
+import Animated, { ZoomIn, ZoomOut } from "react-native-reanimated";
+import { colors, layout, motion, spacing } from "../../constants/theme";
+import { Reveal, nativeOnly } from "../../components/ui/Reveal";
 import { DiscoveryMap } from "../../components/discovery/DiscoveryMap";
 import { DiscoveryBar } from "../../components/discovery/DiscoveryBar";
 import { DiscoveryFilters, countActiveCriteria } from "../../components/discovery/DiscoveryFilters";
@@ -73,21 +75,29 @@ export default function DiscoveryScreen() {
 
   const toggleSave = useCallback(async (id: string) => setSavedIds(await toggleSavedListing(id)), []);
 
+  // One array for as long as these results stand. A fresh array on every
+  // render made the map rebuild its clusters each time Suza's state changed.
+  const listings = useMemo(() => (result?.items ?? []).map((i) => i.listing), [result]);
+
   if (!hydrated) return <View style={styles.screen} />;
   if (!onboardingDone || replayIntro) return <Redirect href="/intro" />;
 
   const effectiveMode = Platform.OS === "web" ? "list" : viewMode;
-  const listings = (result?.items ?? []).map((i) => i.listing);
   const selected = selectedId ? result?.items.find((i) => i.listing.id === selectedId) : undefined;
   const barTop = insets.top + spacing.sm;
   const bottomInset = layout.tabBarHeight + spacing.md;
 
   return (
     <View style={styles.screen}>
+      {/* Map and list fade in as they take each other's place, rather than cutting. */}
       {effectiveMode === "map" ? (
-        <DiscoveryMap listings={listings} />
+        <Reveal key="map" variant="fade" duration={motion.swap} style={StyleSheet.absoluteFill}>
+          <DiscoveryMap listings={listings} />
+        </Reveal>
       ) : (
-        <ResultsList result={result} searching={searching} savedIds={savedIds} onToggleSave={toggleSave} onClearFilters={clearFilters} topInset={barTop + 112} />
+        <Reveal key="list" variant="fade" duration={motion.swap} style={StyleSheet.absoluteFill}>
+          <ResultsList result={result} searching={searching} savedIds={savedIds} onToggleSave={toggleSave} onClearFilters={clearFilters} topInset={barTop + 112} />
+        </Reveal>
       )}
 
       <View style={[styles.barWrap, { top: barTop }]} pointerEvents="box-none">
@@ -100,10 +110,11 @@ export default function DiscoveryScreen() {
         </View>
       ) : null}
 
+      {/* The orb shrinks away as the sheet rises and grows back when it closes, instead of blinking out and in. */}
       {!sheetOpen ? (
-        <View style={[styles.orb, { bottom: bottomInset }]} pointerEvents="box-none">
+        <Animated.View entering={nativeOnly(ZoomIn.duration(motion.quick))} exiting={nativeOnly(ZoomOut.duration(motion.quick))} style={[styles.orb, { bottom: bottomInset }]} pointerEvents="box-none">
           <SuzaOrb state={suza.state} onPress={() => setSheetOpen(true)} />
-        </View>
+        </Animated.View>
       ) : null}
 
       <SuzaSheet suza={suza} open={sheetOpen} onClose={closeSheet} />
