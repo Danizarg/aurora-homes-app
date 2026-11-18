@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from "react-native-reanimated";
@@ -23,14 +23,20 @@ interface ListingCardProps {
  * headline · rating, two grey lines and a bold price. Photos cross-fade in;
  * the whole card squeezes softly when pressed.
  */
-export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) {
+export const ListingCard = memo(function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) {
   const [index, setIndex] = useState(0);
+  // Photos load as far as one page past the furthest one seen, never all at
+  // once: a feed of cards used to fetch and decode every photo of every home
+  // up front, which is what made the list slow to settle.
+  const [loadedThrough, setLoadedThrough] = useState(1);
   const [width, setWidth] = useState(0);
   const { amount, unit } = priceParts(listing);
 
   function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
     if (!width) return;
-    setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    setIndex(page);
+    setLoadedThrough((n) => Math.max(n, page + 2));
   }
 
   return (
@@ -45,15 +51,20 @@ export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) 
             onMomentumScrollEnd={onScrollEnd}
             style={styles.carousel}
           >
-            {listing.images.map((image) => (
-              <Image
-                key={image.id}
-                source={{ uri: image.uri }}
-                style={{ width, height: width }}
-                contentFit="cover"
-                transition={motion.image}
-              />
-            ))}
+            {listing.images.map((image, i) =>
+              i <= loadedThrough ? (
+                <Image
+                  key={image.id}
+                  source={{ uri: image.uri }}
+                  style={{ width, height: width }}
+                  contentFit="cover"
+                  transition={motion.image}
+                />
+              ) : (
+                // Holds the page's place in the carousel until its photo is wanted.
+                <View key={image.id} style={{ width, height: width }} />
+              )
+            )}
           </ScrollView>
         ) : null}
 
@@ -88,7 +99,7 @@ export function ListingCard({ listing, saved, onToggleSave }: ListingCardProps) 
       </View>
     </PressableScale>
   );
-}
+});
 
 interface CompactListingCardProps extends ListingCardProps {
   width: number;

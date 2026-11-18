@@ -1,12 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { colors, layout, radius, spacing, typography } from "../../constants/theme";
+import { colors, layout, motion, radius, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Chip } from "../../components/ui/Chip";
 import { IconButton } from "../../components/ui/IconButton";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { PressableScale } from "../../components/ui/PressableScale";
+import { Reveal } from "../../components/ui/Reveal";
 import { getConversations, getStoredListings } from "../../lib/mock/storage";
 import { getListingById } from "../../lib/mock/listings";
 import type { Conversation, Listing } from "../../types";
@@ -26,10 +29,13 @@ export default function MessagesScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [stored, setStored] = useState<Listing[]>([]);
+  // The empty state waits for the first read, so "You don't have any
+  // messages" never flashes up ahead of the conversations themselves.
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      getConversations().then(setConversations);
+      getConversations().then(setConversations).finally(() => setLoaded(true));
       getStoredListings().then(setStored);
     }, [])
   );
@@ -62,21 +68,22 @@ export default function MessagesScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <EmptyState
+          !loaded ? undefined : <EmptyState
             title="You don’t have any messages"
             subtitle="When you request dates or message an owner, the conversation shows up here."
             actionLabel="Start exploring"
             onAction={() => router.push("/(tabs)")}
           />
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const listing = getListingById(item.listing_id) ?? stored.find((l) => l.id === item.listing_id);
           const thumb = listing?.images[0]?.uri;
           return (
-            <Pressable style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} onPress={() => router.push(`/messages/${item.id}`)}>
+            <Reveal index={index}>
+            <PressableScale pressedScale={0.98} accessibilityRole="button" style={styles.row} onPress={() => router.push(`/messages/${item.id}`)}>
               <View style={styles.avatarWrap}>
                 <Avatar name={item.participant_name} size={56} />
-                {thumb ? <Image source={{ uri: thumb }} style={styles.thumb} /> : null}
+                {thumb ? <Image source={{ uri: thumb }} style={styles.thumb} contentFit="cover" transition={motion.image} /> : null}
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.rowTop}>
@@ -89,7 +96,8 @@ export default function MessagesScreen() {
                 </Text>
               </View>
               {item.unread ? <View style={styles.unreadDot} /> : null}
-            </Pressable>
+            </PressableScale>
+            </Reveal>
           );
         }}
       />
@@ -105,7 +113,6 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl + layout.tabBarHeight },
   row: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, gap: spacing.md },
-  rowPressed: { opacity: 0.7 },
   avatarWrap: { width: 60, height: 60 },
   thumb: { position: "absolute", right: -4, bottom: -2, width: 28, height: 28, borderRadius: radius.sm, borderWidth: 2, borderColor: colors.white, backgroundColor: colors.bgSecondary },
   rowTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },

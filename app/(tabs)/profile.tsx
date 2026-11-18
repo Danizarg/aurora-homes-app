@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, layout, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Avatar } from "../../components/ui/Avatar";
 import { Divider } from "../../components/ui/Divider";
+import { PressableScale } from "../../components/ui/PressableScale";
 import { useDiscovery } from "../../lib/store/discovery";
 import { haptic } from "../../lib/ui/haptics";
 import { getBookingRequests, getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
@@ -77,13 +78,13 @@ export default function ProfileScreen() {
           <StatTile icon="calendar-outline" label="Trips & viewings" value={bookingsCount} onPress={() => router.push("/bookings")} />
         </View>
 
-        <Pressable style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
+        <PressableScale pressedScale={0.98} accessibilityRole="button" style={styles.hostCard} onPress={() => router.push("/(tabs)/ai")}>
           <View style={{ flex: 1 }}>
             <Text style={styles.hostTitle}>List your home with Suzi</Text>
             <Text style={styles.hostBody}>Upload photos — Suzi writes the exposé, FAQ and translations. €20/month, no commission.</Text>
           </View>
           <Image source={{ uri: "https://picsum.photos/seed/zouza-profile-host/200/200" }} style={styles.hostImage} />
-        </Pressable>
+        </PressableScale>
 
         <Text style={styles.sectionTitle}>Settings</Text>
         {settings.map((item, i) => (
@@ -98,19 +99,19 @@ export default function ProfileScreen() {
           <Text style={styles.menuLabel}>Suza speaks her replies</Text>
           <Switch value={voice.speak} onValueChange={(v) => setVoice({ speak: v })} trackColor={{ true: colors.text, false: colors.border }} thumbColor={colors.white} />
         </View>
-        <Pressable style={styles.menuRow} onPress={() => { setVoice({ replayIntro: true }); setOnboardingDone(false); router.replace("/intro"); }}>
+        <PressableScale pressedScale={0.98} accessibilityRole="button" style={styles.menuRow} onPress={() => { setVoice({ replayIntro: true }); setOnboardingDone(false); router.replace("/intro"); }}>
           <Ionicons name="earth-outline" size={24} color={colors.text} />
           <Text style={styles.menuLabel}>Replay the Earth intro</Text>
           <Ionicons name="chevron-forward" size={18} color={colors.text} />
-        </Pressable>
-        <Pressable style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={startFresh}>
+        </PressableScale>
+        <PressableScale pressedScale={0.98} accessibilityRole="button" style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={startFresh}>
           <Ionicons name="refresh-outline" size={24} color={confirmReset ? colors.error : colors.text} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.menuLabel, confirmReset && { color: colors.error }]}>{confirmReset ? "Tap again to start fresh" : "Start fresh"}</Text>
             <Text style={styles.menuSub}>{confirmReset ? "Clears saved homes, your listings, bookings, chats and preferences on this device." : "Reset the app as if newly installed, intro included."}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.text} />
-        </Pressable>
+        </PressableScale>
 
         <Divider gap={spacing.md} />
 
@@ -121,15 +122,18 @@ export default function ProfileScreen() {
 
         <Divider gap={spacing.md} />
 
-        <Pressable
+        <PressableScale
+          pressedScale={0.96}
+          accessibilityRole="button"
+          hitSlop={8}
           onPress={async () => {
             await setMockSession(null);
             router.replace("/auth/login");
           }}
-          style={{ paddingVertical: spacing.sm }}
+          style={{ paddingVertical: spacing.sm, alignSelf: "flex-start" }}
         >
           <Text style={styles.logout}>Log out</Text>
-        </Pressable>
+        </PressableScale>
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
@@ -138,21 +142,21 @@ export default function ProfileScreen() {
 
 function StatTile({ icon, label, value, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: number; onPress: () => void }) {
   return (
-    <Pressable style={({ pressed }) => [styles.tile, pressed && { backgroundColor: colors.bgSecondary }]} onPress={onPress}>
+    <PressableScale pressedScale={0.96} accessibilityRole="button" style={styles.tile} onPress={onPress}>
       <Ionicons name={icon} size={24} color={colors.text} />
       <Text style={styles.tileValue}>{value}</Text>
       <Text style={styles.tileLabel}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 function MenuRow({ item, last }: { item: MenuItem; last?: boolean }) {
   return (
-    <Pressable style={[styles.menuRow, last && { borderBottomWidth: 0 }]} onPress={() => router.push(item.route as never)}>
+    <PressableScale pressedScale={0.98} accessibilityRole="button" style={[styles.menuRow, last && { borderBottomWidth: 0 }]} onPress={() => router.push(item.route as never)}>
       <Ionicons name={item.icon} size={24} color={colors.text} />
       <Text style={styles.menuLabel}>{item.label}</Text>
       <Ionicons name="chevron-forward" size={18} color={colors.text} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

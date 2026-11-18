@@ -1,9 +1,12 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { colors, layout, radius, spacing, typography } from "../../constants/theme";
+import { colors, layout, motion, radius, spacing, typography } from "../../constants/theme";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { PressableScale } from "../../components/ui/PressableScale";
+import { Reveal } from "../../components/ui/Reveal";
 import { getSavedListingIds, getStoredListings } from "../../lib/mock/storage";
 import { getListingById } from "../../lib/mock/listings";
 import type { Listing } from "../../types";
@@ -12,14 +15,21 @@ import type { Listing } from "../../types";
 export default function WishlistsScreen() {
   const [saved, setSaved] = useState<Listing[]>([]);
   const [recent, setRecent] = useState<Listing[]>([]);
+  // Nothing is drawn under the title until the first read is back. Otherwise
+  // "Create your first wishlist" flashes up before the saved homes replace it.
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [ids, stored] = await Promise.all([getSavedListingIds(), getStoredListings()]);
-        const resolved = ids.map((id) => getListingById(id) ?? stored.find((l) => l.id === id)).filter(Boolean) as Listing[];
-        setSaved(resolved);
-        setRecent(stored);
+        try {
+          const [ids, stored] = await Promise.all([getSavedListingIds(), getStoredListings()]);
+          const resolved = ids.map((id) => getListingById(id) ?? stored.find((l) => l.id === id)).filter(Boolean) as Listing[];
+          setSaved(resolved);
+          setRecent(stored);
+        } finally {
+          setLoaded(true);
+        }
       })();
     }, [])
   );
@@ -31,22 +41,26 @@ export default function WishlistsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Wishlists</Text>
 
-        {empty ? (
-          <EmptyState
-            title="Create your first wishlist"
-            subtitle="As you search, tap the heart icon to save your favourite homes to a wishlist."
-            actionLabel="Start exploring"
-            onAction={() => router.push("/(tabs)")}
-          />
-        ) : (
-          <View style={styles.grid}>
-            {saved.length > 0 ? (
-              <WishlistTile title="Saved homes" count={saved.length} images={saved.map((l) => l.images[0]?.uri)} onPress={() => router.push("/wishlists/saved")} />
-            ) : null}
-            {recent.length > 0 ? (
-              <WishlistTile title="My listings" count={recent.length} images={recent.map((l) => l.images[0]?.uri)} onPress={() => router.push("/owner-dashboard")} />
-            ) : null}
-          </View>
+        {!loaded ? null : (
+          <Reveal variant="fade">
+            {empty ? (
+              <EmptyState
+                title="Create your first wishlist"
+                subtitle="As you search, tap the heart icon to save your favourite homes to a wishlist."
+                actionLabel="Start exploring"
+                onAction={() => router.push("/(tabs)")}
+              />
+            ) : (
+              <View style={styles.grid}>
+                {saved.length > 0 ? (
+                  <WishlistTile title="Saved homes" count={saved.length} images={saved.map((l) => l.images[0]?.uri)} onPress={() => router.push("/wishlists/saved")} />
+                ) : null}
+                {recent.length > 0 ? (
+                  <WishlistTile title="My listings" count={recent.length} images={recent.map((l) => l.images[0]?.uri)} onPress={() => router.push("/owner-dashboard")} />
+                ) : null}
+              </View>
+            )}
+          </Reveal>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -56,17 +70,17 @@ export default function WishlistsScreen() {
 function WishlistTile({ title, count, images, onPress }: { title: string; count: number; images: (string | undefined)[]; onPress: () => void }) {
   const tiles = [0, 1, 2, 3].map((i) => images[i]);
   return (
-    <Pressable onPress={onPress} style={styles.tile}>
+    <PressableScale pressedScale={0.97} accessibilityRole="button" onPress={onPress} style={styles.tile}>
       <View style={styles.collage}>
         {tiles.map((uri, i) => (
           <View key={i} style={styles.collageCell}>
-            {uri ? <Image source={{ uri }} style={styles.collageImage} /> : <View style={[styles.collageImage, styles.collageEmpty]} />}
+            {uri ? <Image source={{ uri }} style={styles.collageImage} contentFit="cover" transition={motion.image} /> : <View style={[styles.collageImage, styles.collageEmpty]} />}
           </View>
         ))}
       </View>
       <Text style={styles.tileTitle}>{title}</Text>
       <Text style={styles.tileMeta}>{count} saved</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

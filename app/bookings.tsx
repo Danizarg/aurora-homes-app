@@ -1,11 +1,14 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { colors, radius, spacing, typography } from "../constants/theme";
+import { colors, motion, radius, spacing, typography } from "../constants/theme";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
+import { PressableScale } from "../components/ui/PressableScale";
+import { Reveal } from "../components/ui/Reveal";
 import { getBookingRequests, getConversations, getStoredListings } from "../lib/mock/storage";
 import { getListingById } from "../lib/mock/listings";
 import { describeBooking } from "../lib/booking/dates";
@@ -19,10 +22,13 @@ export default function BookingsScreen() {
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [stored, setStored] = useState<Listing[]>([]);
+  // Nothing is drawn under the heading until the first read is back, so
+  // "No trips booked" never flashes up ahead of the requests themselves.
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      getBookingRequests().then(setBookings);
+      getBookingRequests().then(setBookings).finally(() => setLoaded(true));
       getConversations().then(setConversations);
       getStoredListings().then(setStored);
     }, [])
@@ -35,18 +41,26 @@ export default function BookingsScreen() {
     return getListingById(b.listing_id) ?? stored.find((l) => l.id === b.listing_id);
   }
 
-  function Row({ b }: { b: BookingRequest }) {
+  // A plain function rather than a component declared in here: a component
+  // made anew on every render would remount each row, and its photo, each time.
+  function renderRow(b: BookingRequest) {
     const listing = listingFor(b);
     const conversation = conversations.find((c) => c.booking_id === b.id || c.listing_id === b.listing_id);
     return (
-      <Pressable style={styles.row} onPress={() => (conversation ? router.push(`/messages/${conversation.id}`) : router.push(`/listing/${b.listing_id}`))}>
-        <Image source={{ uri: listing?.images[0]?.uri }} style={styles.thumb} />
+      <PressableScale
+        key={b.id}
+        pressedScale={0.98}
+        accessibilityRole="button"
+        style={styles.row}
+        onPress={() => (conversation ? router.push(`/messages/${conversation.id}`) : router.push(`/listing/${b.listing_id}`))}
+      >
+        <Image source={{ uri: listing?.images[0]?.uri }} style={styles.thumb} contentFit="cover" transition={motion.image} />
         <View style={{ flex: 1 }}>
           <Text style={styles.title} numberOfLines={1}>{b.listing_title}</Text>
           <Text style={styles.meta}>{describeBooking(b)}{b.guests ? ` · ${b.guests} guests` : ""}</Text>
           <Badge label={statusLabel[b.status]} tone={statusTone[b.status]} style={{ marginTop: spacing.sm }} />
         </View>
-      </Pressable>
+      </PressableScale>
     );
   }
 
@@ -55,23 +69,27 @@ export default function BookingsScreen() {
       <ScreenHeader leading="back" border={false} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.heading}>Trips & viewings</Text>
-        {bookings.length === 0 ? (
-          <EmptyState
-            title="No trips booked… yet!"
-            subtitle="Pick dates on any home to request a stay, a move-in date or a viewing. Requests show up here."
-            actionLabel="Start exploring"
-            onAction={() => router.push("/(tabs)")}
-          />
-        ) : (
-          <>
-            {upcoming.map((b) => <Row key={b.id} b={b} />)}
-            {past.length > 0 ? (
+        {!loaded ? null : (
+          <Reveal variant="fade">
+            {bookings.length === 0 ? (
+              <EmptyState
+                title="No trips booked… yet!"
+                subtitle="Pick dates on any home to request a stay, a move-in date or a viewing. Requests show up here."
+                actionLabel="Start exploring"
+                onAction={() => router.push("/(tabs)")}
+              />
+            ) : (
               <>
-                <Text style={styles.section}>Declined</Text>
-                {past.map((b) => <Row key={b.id} b={b} />)}
+                {upcoming.map(renderRow)}
+                {past.length > 0 ? (
+                  <>
+                    <Text style={styles.section}>Declined</Text>
+                    {past.map(renderRow)}
+                  </>
+                ) : null}
               </>
-            ) : null}
-          </>
+            )}
+          </Reveal>
         )}
       </ScrollView>
     </SafeAreaView>
