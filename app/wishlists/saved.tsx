@@ -6,6 +6,7 @@ import { colors, spacing, typography } from "../../constants/theme";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { ListingCard } from "../../components/listings/ListingCard";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { Reveal } from "../../components/ui/Reveal";
 import { getSavedListingIds, getStoredListings, toggleSavedListing } from "../../lib/mock/storage";
 import { getListingById } from "../../lib/mock/listings";
 import type { Listing } from "../../types";
@@ -13,10 +14,13 @@ import type { Listing } from "../../types";
 export default function SavedHomesScreen() {
   const [ids, setIds] = useState<string[]>([]);
   const [stored, setStored] = useState<Listing[]>([]);
+  // The count and the empty state wait for the first read, so neither
+  // "0 homes" nor "Nothing saved yet" flashes up ahead of the saved homes.
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      getSavedListingIds().then(setIds);
+      getSavedListingIds().then(setIds).finally(() => setLoaded(true));
       getStoredListings().then(setStored);
     }, [])
   );
@@ -38,12 +42,18 @@ export default function SavedHomesScreen() {
         ListHeaderComponent={
           <View style={{ marginBottom: spacing.lg }}>
             <Text style={styles.title}>Saved homes</Text>
-            <Text style={styles.subtitle}>{listings.length} {listings.length === 1 ? "home" : "homes"}</Text>
+            {loaded ? <Text style={styles.subtitle}>{listings.length} {listings.length === 1 ? "home" : "homes"}</Text> : null}
           </View>
         }
-        renderItem={({ item }) => <ListingCard listing={item} saved onToggleSave={toggle} />}
+        renderItem={({ item, index }) => (
+          <Reveal index={index}>
+            <ListingCard listing={item} saved onToggleSave={toggle} />
+          </Reveal>
+        )}
         ListEmptyComponent={
-          <EmptyState title="Nothing saved yet" subtitle="Tap the heart on any home to keep it here." actionLabel="Start exploring" onAction={() => router.push("/(tabs)")} />
+          loaded ? (
+            <EmptyState title="Nothing saved yet" subtitle="Tap the heart on any home to keep it here." actionLabel="Start exploring" onAction={() => router.push("/(tabs)")} />
+          ) : undefined
         }
       />
     </SafeAreaView>
