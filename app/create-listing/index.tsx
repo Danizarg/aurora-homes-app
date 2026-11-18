@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { Image } from "expo-image";
-import Animated, { Easing, FadeIn, FadeInUp, ZoomIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeInUp, ZoomIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -20,6 +20,7 @@ import { Badge } from "../../components/ui/Badge";
 import { TextField } from "../../components/ui/TextField";
 import { Divider } from "../../components/ui/Divider";
 import { PressableScale } from "../../components/ui/PressableScale";
+import { Reveal, nativeOnly } from "../../components/ui/Reveal";
 import { ZMark } from "../../components/brand/ZMark";
 import {
   describeDetectedFeatures,
@@ -654,7 +655,7 @@ export default function AiListingBuilder() {
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           >
             {messages.map((m) => (
-              <Animated.View key={m.id} entering={FadeInUp.duration(220)} style={[styles.bubble, m.from === "ai" ? styles.bubbleAi : styles.bubbleUser]}>
+              <Animated.View key={m.id} entering={nativeOnly(FadeInUp.duration(220))} style={[styles.bubble, m.from === "ai" ? styles.bubbleAi : styles.bubbleUser]}>
                 {m.from === "ai" ? (
                   <View style={styles.aiLabelRow}>
                     <ZMark size={10} color={colors.primaryDark} />
@@ -834,7 +835,7 @@ export default function AiListingBuilder() {
       {step === "success" && (
         <StepFrame>
         <View style={styles.centered}>
-          <Animated.View entering={ZoomIn.springify().damping(motion.springWater.damping).stiffness(motion.springWater.stiffness).mass(motion.springWater.mass)}>
+          <Animated.View entering={nativeOnly(ZoomIn.springify().damping(motion.springWater.damping).stiffness(motion.springWater.stiffness).mass(motion.springWater.mass))}>
             <Ionicons name="checkmark-circle" size={64} color={colors.success} />
           </Animated.View>
           <Text style={styles.centeredTitle}>Your listing is live</Text>
@@ -877,9 +878,9 @@ export default function AiListingBuilder() {
 /** Each step fades in as it takes the last one's place, so the builder reads as one flow rather than a run of hard cuts. */
 function StepFrame({ children }: PropsWithChildren) {
   return (
-    <Animated.View entering={FadeIn.duration(motion.swap)} style={styles.stepFrame}>
+    <Reveal variant="fade" duration={motion.swap} style={styles.stepFrame}>
       {children}
-    </Animated.View>
+    </Reveal>
   );
 }
 
