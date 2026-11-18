@@ -30,7 +30,7 @@ export default function SignupScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader title="Finish signing up" leading="back" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
         <TextField label="Full name" value={fullName} onChangeText={setFullName} placeholder="Jane Owner" />
         <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" helper="We'll email you listing enquiries and viewing confirmations." />
         <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 8 characters" />

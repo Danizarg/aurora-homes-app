@@ -1,24 +1,26 @@
-import { useEffect, useRef, useState, type ComponentRef } from "react";
+import { useEffect, useRef, useState, type ComponentRef, type PropsWithChildren } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
+import Animated, { Easing, FadeInUp, ZoomIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "../../constants/theme";
+import { colors, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { TextField } from "../../components/ui/TextField";
 import { Divider } from "../../components/ui/Divider";
+import { PressableScale } from "../../components/ui/PressableScale";
+import { Reveal, nativeOnly } from "../../components/ui/Reveal";
 import { ZMark } from "../../components/brand/ZMark";
 import {
   describeDetectedFeatures,
@@ -39,6 +41,7 @@ import { getOrCreateSupabaseUserId } from "../../lib/auth/service";
 import { useDiscovery } from "../../lib/store/discovery";
 import { useVoiceGuide } from "../../lib/voice/useVoiceGuide";
 import { spokenGoOn, spokenNumber, spokenSkip, spokenYesNo } from "../../lib/suza/spoken";
+import { haptic } from "../../lib/ui/haptics";
 
 type WizardStep = "photos" | "address" | "price" | "chat" | "generating" | "review" | "preview" | "success";
 
@@ -524,6 +527,12 @@ export default function AiListingBuilder() {
 
   const currentQuestion = questions[questionIndex];
   const progress = (stepOrder.indexOf(step) + 1) / stepOrder.length;
+  // The bar eases to each new step instead of jumping, so progress reads as movement.
+  const progressValue = useSharedValue(progress);
+  useEffect(() => {
+    progressValue.set(withTiming(progress, { duration: 320, easing: Easing.out(Easing.cubic) }));
+  }, [progress, progressValue]);
+  const progressStyle = useAnimatedStyle(() => ({ width: `${progressValue.get() * 100}%` }));
   const showFooter = step === "photos" || step === "address" || step === "price" || step === "review" || step === "preview";
 
   const footer: Record<string, { label: string; disabled?: boolean; onPress: () => void }> = {
@@ -544,57 +553,79 @@ export default function AiListingBuilder() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       {/* Airbnb host-setup header: exit button right, thin progress bar underneath */}
       <View style={styles.header}>
-        <Pressable onPress={() => (step === "photos" ? router.back() : goBack())} hitSlop={10} style={styles.headerBack}>
+        <PressableScale
+          pressedScale={0.88}
+          onPress={() => (step === "photos" ? router.back() : goBack())}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={styles.headerBack}
+        >
           <Ionicons name="chevron-back" size={24} color={colors.text} />
-        </Pressable>
+        </PressableScale>
         <Text style={styles.headerTitle}>List with Suzi</Text>
         <Button label="Exit" variant="outline" size="sm" onPress={() => router.back()} />
       </View>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+        <Animated.View style={[styles.progressFill, progressStyle]} />
       </View>
 
       {step === "photos" && (
+        <StepFrame>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.stepTitle}>Add some photos of your place</Text>
           <Text style={styles.stepBody}>Suzi works best with 5–15 clear photos of the interior, exterior and key rooms. You can add more later.</Text>
 
           {images.length === 0 ? (
-            <Pressable style={styles.uploadDropzone} onPress={pickImages}>
+            <PressableScale pressedScale={0.98} haptics accessibilityRole="button" style={styles.uploadDropzone} onPress={pickImages}>
               <Ionicons name="images-outline" size={40} color={colors.text} />
               <Text style={styles.uploadTitle}>Add photos</Text>
               <Text style={styles.uploadBody}>Choose from your library</Text>
-            </Pressable>
+            </PressableScale>
           ) : (
             <View style={styles.photoGrid}>
               {images.map((uri, i) => (
                 <View key={uri} style={[styles.photoTile, i === 0 && styles.photoTileCover]}>
-                  <Image source={{ uri }} style={styles.photoImage} />
+                  <Image source={{ uri }} style={styles.photoImage} contentFit="cover" transition={motion.image} />
                   {i === 0 ? <Badge label="Cover photo" style={styles.coverBadge} /> : null}
-                  <Pressable style={styles.removePhoto} onPress={() => removeImage(uri)} hitSlop={6}>
+                  <PressableScale pressedScale={0.88} style={styles.removePhoto} onPress={() => removeImage(uri)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Remove photo">
                     <Ionicons name="close" size={14} color={colors.text} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
               ))}
-              <Pressable style={styles.addPhotoTile} onPress={pickImages}>
+              <PressableScale pressedScale={0.97} accessibilityRole="button" style={styles.addPhotoTile} onPress={pickImages}>
                 <Ionicons name="add" size={28} color={colors.text} />
                 <Text style={styles.addPhotoLabel}>Add more</Text>
-              </Pressable>
+              </PressableScale>
             </View>
           )}
         </ScrollView>
+        </StepFrame>
       )}
 
       {step === "address" && (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <StepFrame>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets>
           <Text style={styles.stepTitle}>Where’s your place located?</Text>
           <Text style={styles.stepBody}>Just the area or city — Suzi will handle the rest. The exact address is only shared after a viewing is confirmed.</Text>
-          <TextField label="Area, City" value={address} onChangeText={setAddress} placeholder="e.g. Golden Mile, Marbella" autoFocus />
+          <TextField
+            label="Area, City"
+            value={address}
+            onChangeText={setAddress}
+            placeholder="e.g. Golden Mile, Marbella"
+            autoFocus
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              if (address.trim()) submitAddress(address);
+            }}
+          />
         </ScrollView>
+        </StepFrame>
       )}
 
       {step === "price" && (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <StepFrame>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets>
           <Text style={styles.stepTitle}>Now, set your price</Text>
           <Text style={styles.stepBody}>You can leave this blank and set it later — Suzi will still write the full listing.</Text>
           <View style={styles.priceEntry}>
@@ -611,17 +642,20 @@ export default function AiListingBuilder() {
           </View>
           <Text style={styles.priceHint}>Per month for rentals, total for sales. Suzi adds utilities and deposit estimates for you. Publishing costs €20/month while the listing is live, with no commission.</Text>
         </ScrollView>
+        </StepFrame>
       )}
 
       {step === "chat" && (
+        <StepFrame>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
           <ScrollView
             ref={scrollRef}
             contentContainerStyle={styles.chatContent}
+            keyboardDismissMode="on-drag"
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           >
             {messages.map((m) => (
-              <View key={m.id} style={[styles.bubble, m.from === "ai" ? styles.bubbleAi : styles.bubbleUser]}>
+              <Animated.View key={m.id} entering={nativeOnly(FadeInUp.duration(220))} style={[styles.bubble, m.from === "ai" ? styles.bubbleAi : styles.bubbleUser]}>
                 {m.from === "ai" ? (
                   <View style={styles.aiLabelRow}>
                     <ZMark size={10} color={colors.primaryDark} />
@@ -629,7 +663,7 @@ export default function AiListingBuilder() {
                   </View>
                 ) : null}
                 <Text style={m.from === "ai" ? styles.bubbleTextAi : styles.bubbleTextUser}>{m.text}</Text>
-              </View>
+              </Animated.View>
             ))}
           </ScrollView>
 
@@ -638,9 +672,18 @@ export default function AiListingBuilder() {
               {currentQuestion.quickReplies ? (
                 <View style={styles.chipRow}>
                   {currentQuestion.quickReplies.map((qr) => (
-                    <Pressable key={qr.label} style={styles.replyChip} onPress={() => answerCurrentQuestion(qr.label, qr.value)}>
+                    <PressableScale
+                      key={qr.label}
+                      pressedScale={0.95}
+                      accessibilityRole="button"
+                      style={styles.replyChip}
+                      onPress={() => {
+                        haptic.select();
+                        answerCurrentQuestion(qr.label, qr.value);
+                      }}
+                    >
                       <Text style={styles.replyChipText}>{qr.label}</Text>
-                    </Pressable>
+                    </PressableScale>
                   ))}
                 </View>
               ) : (
@@ -654,17 +697,25 @@ export default function AiListingBuilder() {
                     keyboardType={currentQuestion.keyboardType ?? "default"}
                     onSubmitEditing={submitTextAnswer}
                   />
-                  <Pressable style={[styles.sendButton, !textAnswer.trim() && styles.sendIdle]} onPress={submitTextAnswer}>
+                  <PressableScale
+                    pressedScale={0.9}
+                    accessibilityRole="button"
+                    accessibilityLabel="Send answer"
+                    style={[styles.sendButton, !textAnswer.trim() && styles.sendIdle]}
+                    onPress={submitTextAnswer}
+                  >
                     <Ionicons name="arrow-up" size={18} color={colors.white} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
               )}
             </View>
           )}
         </KeyboardAvoidingView>
+        </StepFrame>
       )}
 
       {step === "generating" && (
+        <StepFrame>
         <View style={styles.centered}>
           <View style={styles.generatingIcon}>
             <ZMark size={32} color={colors.primaryDark} />
@@ -683,10 +734,12 @@ export default function AiListingBuilder() {
             ))}
           </View>
         </View>
+        </StepFrame>
       )}
 
       {step === "review" && generated && (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <StepFrame>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets>
           <Text style={styles.stepTitle}>Review your listing</Text>
           <Text style={styles.stepBody}>Everything below was written by Suzi. Edit anything before publishing.</Text>
 
@@ -749,14 +802,16 @@ export default function AiListingBuilder() {
             ))}
           </View>
         </ScrollView>
+        </StepFrame>
       )}
 
       {step === "preview" && generated && (
+        <StepFrame>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.stepTitle}>Here’s how it will look</Text>
           <Text style={styles.stepBody}>This is the card renters and buyers will see in search.</Text>
           <View style={styles.previewCard}>
-            {images.length > 0 ? <Image source={{ uri: images[0] }} style={styles.previewImage} /> : <View style={[styles.previewImage, { backgroundColor: colors.bgSecondary }]} />}
+            {images.length > 0 ? <Image source={{ uri: images[0] }} style={styles.previewImage} contentFit="cover" transition={motion.image} /> : <View style={[styles.previewImage, { backgroundColor: colors.bgSecondary }]} />}
             <View style={styles.previewBody}>
               <View style={styles.previewTitleRow}>
                 <Text style={styles.previewTitle} numberOfLines={1}>{generated.title}</Text>
@@ -774,11 +829,15 @@ export default function AiListingBuilder() {
             </View>
           </View>
         </ScrollView>
+        </StepFrame>
       )}
 
       {step === "success" && (
+        <StepFrame>
         <View style={styles.centered}>
-          <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+          <Animated.View entering={nativeOnly(ZoomIn.springify().damping(motion.springWater.damping).stiffness(motion.springWater.stiffness).mass(motion.springWater.mass))}>
+            <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+          </Animated.View>
           <Text style={styles.centeredTitle}>Your listing is live</Text>
           <Text style={styles.centeredBody}>
             {publishedToSupabase ? "Saved to Supabase." : "Saved locally on this device (mock storage)."}
@@ -787,14 +846,15 @@ export default function AiListingBuilder() {
           <Button label="See it on the map" variant="outline" style={{ marginTop: spacing.sm, alignSelf: "stretch" }} onPress={() => router.replace("/(tabs)")} />
           {geo?.approximate ? <Text style={styles.centeredBody}>The pin uses the area’s centre until you add a precise address.</Text> : null}
         </View>
+        </StepFrame>
       )}
 
       {guide.canListen && (step === "photos" || step === "address" || step === "price" || step === "chat" || step === "review" || step === "preview") ? (
         <View style={styles.voiceRow} pointerEvents="box-none">
-          <Pressable onPress={guide.listening ? guide.stop : guide.listenAgain} style={[styles.voicePill, guide.listening && styles.voicePillActive]} hitSlop={8}>
+          <PressableScale pressedScale={0.95} haptics accessibilityRole="button" onPress={guide.listening ? guide.stop : guide.listenAgain} style={[styles.voicePill, guide.listening && styles.voicePillActive]} hitSlop={8}>
             <Ionicons name={guide.listening ? "radio-button-on" : "mic"} size={16} color={colors.white} />
             <Text style={styles.voicePillText}>{guide.listening ? "Listening…" : "Answer by voice"}</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
 
@@ -812,6 +872,15 @@ export default function AiListingBuilder() {
         </View>
       ) : null}
     </SafeAreaView>
+  );
+}
+
+/** Each step fades in as it takes the last one's place, so the builder reads as one flow rather than a run of hard cuts. */
+function StepFrame({ children }: PropsWithChildren) {
+  return (
+    <Reveal variant="fade" duration={motion.swap} style={styles.stepFrame}>
+      {children}
+    </Reveal>
   );
 }
 
@@ -833,6 +902,7 @@ const styles = StyleSheet.create({
   headerTitle: { ...typography.smallBold, color: colors.text },
   progressTrack: { height: 4, backgroundColor: colors.bgTertiary },
   progressFill: { height: 4, backgroundColor: colors.text },
+  stepFrame: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 120 },
   stepTitle: { ...typography.display, color: colors.text, marginTop: spacing.sm },
   voiceRow: { alignItems: "center", paddingVertical: spacing.sm },

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import Animated, { FadeIn, FadeInUp, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeInUp, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, layout, motion, radius, shadow, spacing, typography } from "../../constants/theme";
 import { ZMark } from "../brand/ZMark";
@@ -50,7 +50,13 @@ export function SuzaSheet({ suza, open, onClose }: SuzaSheetProps) {
     if (open) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
   }, [messages.length, open]);
 
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translate.get() }] }));
+  // Compact and full height glide into each other, at about the keyboard's own pace, instead of snapping.
+  const sheetHeight = useSharedValue(compactHeight);
+  useEffect(() => {
+    sheetHeight.set(withTiming(expanded ? fullHeight : compactHeight, { duration: 280, easing: Easing.bezier(0.22, 1, 0.36, 1) }));
+  }, [expanded, fullHeight, compactHeight, sheetHeight]);
+
+  const sheetStyle = useAnimatedStyle(() => ({ height: sheetHeight.get(), transform: [{ translateY: translate.get() }] }));
   const last = messages[messages.length - 1];
   const options = last?.role === "suza" ? last.options : undefined;
 
@@ -68,7 +74,7 @@ export function SuzaSheet({ suza, open, onClose }: SuzaSheetProps) {
   }
 
   return (
-    <Animated.View style={[styles.sheet, { height: expanded ? fullHeight : compactHeight, bottom: tabBarHeight, paddingBottom: spacing.sm }, sheetStyle]} pointerEvents={open ? "auto" : "none"}>
+    <Animated.View style={[styles.sheet, { bottom: tabBarHeight, paddingBottom: spacing.sm }, sheetStyle]} pointerEvents={open ? "auto" : "none"}>
       <BlurView tint="light" intensity={70} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
       <View style={styles.tint} />
 

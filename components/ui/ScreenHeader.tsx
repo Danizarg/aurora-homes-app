@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { colors, spacing, typography } from "../../constants/theme";
+import { PressableScale } from "./PressableScale";
 
 interface ScreenHeaderProps {
   /** Centered title (Airbnb modal / pushed-screen header). Omit for a bare back row. */
@@ -20,15 +21,17 @@ export function ScreenHeader({ title, leading = "back", onLeading, right, border
     <View style={[styles.row, border && styles.border]}>
       <View style={[styles.side, styles.start]}>
         {leading !== "none" ? (
-          <Pressable
+          // Squeezes under the finger like every other icon button, so leaving a screen answers the tap at once.
+          <PressableScale
             onPress={onLeading ?? (() => router.back())}
             hitSlop={10}
+            pressedScale={0.88}
             accessibilityRole="button"
             accessibilityLabel={leading === "close" ? "Close" : "Back"}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            style={styles.iconButton}
           >
             <Ionicons name={icon} size={leading === "close" ? 22 : 24} color={colors.text} />
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
       {title ? <Text style={styles.title} numberOfLines={1} accessibilityRole="header">{title}</Text> : null}
@@ -53,6 +56,5 @@ const styles = StyleSheet.create({
   start: { justifyContent: "flex-start" },
   end: { justifyContent: "flex-end" },
   iconButton: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  pressed: { backgroundColor: colors.bgSecondary },
   title: { flexShrink: 1, textAlign: "center", ...typography.h4, color: colors.text },
 });
