@@ -1,13 +1,17 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "../constants/theme";
+import { colors, motion, radius, spacing, typography } from "../constants/theme";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Divider } from "../components/ui/Divider";
+import { PressableScale } from "../components/ui/PressableScale";
+import { Reveal } from "../components/ui/Reveal";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
+import { SkeletonRow } from "../components/ui/Skeleton";
 import { Avatar } from "../components/ui/Avatar";
 import { getBookingRequests, getStoredListings, updateBookingStatus } from "../lib/mock/storage";
 import { describeBooking } from "../lib/booking/dates";
@@ -20,15 +24,22 @@ import type { BookingRequest, Listing } from "../types";
 export default function OwnerDashboardScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [requests, setRequests] = useState<BookingRequest[]>([]);
+  // Until the first read comes back there is nothing true to say, so the page
+  // holds placeholder rows instead of flashing "No published listings yet".
+  const [loaded, setLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const localListings = await getStoredListings();
-        const userId = await getCurrentUserId();
-        const supabaseListings = userId ? await fetchMyListings(userId) : [];
-        setListings([...supabaseListings, ...localListings]);
-        setRequests(await getBookingRequests());
+        try {
+          const localListings = await getStoredListings();
+          const userId = await getCurrentUserId();
+          const supabaseListings = userId ? await fetchMyListings(userId) : [];
+          setListings([...supabaseListings, ...localListings]);
+          setRequests(await getBookingRequests());
+        } finally {
+          setLoaded(true);
+        }
       })();
     }, [])
   );
@@ -42,39 +53,48 @@ export default function OwnerDashboardScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Your listings</Text>
 
-        <Text style={styles.sectionTitle}>Published ({published.length})</Text>
-        {published.length === 0 ? (
-          <Text style={styles.muted}>No published listings yet. Upload photos and let Suzi write your first one.</Text>
-        ) : (
-          published.map((l) => <ListingRow key={l.id} listing={l} />)
-        )}
-
-        <Divider />
-
-        <Text style={styles.sectionTitle}>Drafts ({drafts.length})</Text>
-        {drafts.length === 0 ? <Text style={styles.muted}>No drafts.</Text> : drafts.map((l) => <ListingRow key={l.id} listing={l} />)}
-
-        <Divider />
-
-        <Text style={styles.sectionTitle}>Booking & viewing requests</Text>
-        {requests.length === 0 ? <Text style={styles.muted}>Requests made from any listing’s calendar appear here.</Text> : null}
-        {requests.map((r, i) => (
-          <View key={r.id} style={[styles.requestRow, i === requests.length - 1 && { borderBottomWidth: 0 }]}>
-            <Avatar name="Guest" size={44} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.requestName} numberOfLines={1}>{r.listing_title}</Text>
-              <Text style={styles.requestMeta}>{describeBooking(r)}{r.guests ? ` · ${r.guests} guests` : ""}</Text>
-              {r.status === "pending" ? (
-                <View style={styles.requestActions}>
-                  <Button label="Confirm" variant="dark" size="sm" onPress={async () => setRequests(await updateBookingStatus(r.id, "confirmed"))} />
-                  <Button label="Decline" variant="outline" size="sm" onPress={async () => setRequests(await updateBookingStatus(r.id, "declined"))} />
-                </View>
-              ) : null}
-            </View>
-            <Badge label={r.status === "confirmed" ? "Confirmed" : r.status === "pending" ? "Pending" : "Declined"} tone={r.status === "confirmed" ? "success" : "muted"} />
+        {!loaded ? (
+          <View>
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
           </View>
-        ))}
+        ) : (
+          <Reveal variant="fade">
+            <Text style={styles.sectionTitle}>Published ({published.length})</Text>
+            {published.length === 0 ? (
+              <Text style={styles.muted}>No published listings yet. Upload photos and let Suzi write your first one.</Text>
+            ) : (
+              published.map((l) => <ListingRow key={l.id} listing={l} />)
+            )}
 
+            <Divider />
+
+            <Text style={styles.sectionTitle}>Drafts ({drafts.length})</Text>
+            {drafts.length === 0 ? <Text style={styles.muted}>No drafts.</Text> : drafts.map((l) => <ListingRow key={l.id} listing={l} />)}
+
+            <Divider />
+
+            <Text style={styles.sectionTitle}>Booking & viewing requests</Text>
+            {requests.length === 0 ? <Text style={styles.muted}>Requests made from any listing’s calendar appear here.</Text> : null}
+            {requests.map((r, i) => (
+              <View key={r.id} style={[styles.requestRow, i === requests.length - 1 && { borderBottomWidth: 0 }]}>
+                <Avatar name="Guest" size={44} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.requestName} numberOfLines={1}>{r.listing_title}</Text>
+                  <Text style={styles.requestMeta}>{describeBooking(r)}{r.guests ? ` · ${r.guests} guests` : ""}</Text>
+                  {r.status === "pending" ? (
+                    <View style={styles.requestActions}>
+                      <Button label="Confirm" variant="dark" size="sm" onPress={async () => setRequests(await updateBookingStatus(r.id, "confirmed"))} />
+                      <Button label="Decline" variant="outline" size="sm" onPress={async () => setRequests(await updateBookingStatus(r.id, "declined"))} />
+                    </View>
+                  ) : null}
+                </View>
+                <Badge label={r.status === "confirmed" ? "Confirmed" : r.status === "pending" ? "Pending" : "Declined"} tone={r.status === "confirmed" ? "success" : "muted"} />
+              </View>
+            ))}
+          </Reveal>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -82,14 +102,14 @@ export default function OwnerDashboardScreen() {
 
 function ListingRow({ listing }: { listing: Listing }) {
   return (
-    <Pressable style={styles.listingRow} onPress={() => router.push(`/listing/${listing.id}`)}>
-      <Image source={{ uri: listing.images[0]?.uri }} style={styles.thumb} />
+    <PressableScale pressedScale={0.98} accessibilityRole="button" style={styles.listingRow} onPress={() => router.push(`/listing/${listing.id}`)}>
+      <Image source={{ uri: listing.images[0]?.uri }} style={styles.thumb} contentFit="cover" transition={motion.image} />
       <View style={{ flex: 1 }}>
         <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
         <Text style={styles.listingMeta}>{listing.city} · {listing.bedrooms} bd · {priceLine(listing)}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={colors.text} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

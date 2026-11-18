@@ -8,6 +8,7 @@ import { Button } from "../components/ui/Button";
 import { Chip } from "../components/ui/Chip";
 import { TextField } from "../components/ui/TextField";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
+import { Reveal } from "../components/ui/Reveal";
 import type { ContactReason } from "../types";
 
 /** Where Contact Zouza goes. Shown to the user too, so they can write even without a mail app. */
@@ -48,16 +49,16 @@ export default function ContactScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader title="Contact us" leading="back" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
         {submitted ? (
-          <View style={styles.successWrap}>
+          <Reveal variant="fade" style={styles.successWrap}>
             <Ionicons name="checkmark-circle" size={48} color={colors.success} />
             <Text style={styles.successTitle}>Your email is ready</Text>
             <Text style={styles.subtitle}>
               Your mail app has opened with your message addressed to {SUPPORT_EMAIL}. Send it from there, and we’ll reply to {email}.
             </Text>
             <Button label="Back to home" variant="dark" style={{ marginTop: spacing.lg, alignSelf: "stretch" }} onPress={() => router.replace("/(tabs)")} />
-          </View>
+          </Reveal>
         ) : (
           <>
             <Text style={styles.title}>How can we help?</Text>

@@ -30,7 +30,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader title="Log in or sign up" leading="close" onLeading={() => router.replace("/(tabs)")} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Welcome to {brand.name}</Text>
 
         <View style={styles.group}>
