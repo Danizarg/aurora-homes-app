@@ -13,7 +13,8 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.bg },
         }}
       >
-        <Stack.Screen name="(tabs)" />
+        {/* Home is only ever arrived at from the intro, a login or a finished flow. It dissolves in: a sideways push would read as going deeper, not as coming back. */}
+        <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
         <Stack.Screen name="intro" options={{ animation: "fade", gestureEnabled: false }} />
         <Stack.Screen name="listing/[id]" options={{ presentation: "card" }} />
         <Stack.Screen name="search-modal" options={{ presentation: "modal", animation: "slide_from_bottom" }} />

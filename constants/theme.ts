@@ -90,6 +90,10 @@ export const motion = {
   stagger: 60,
   /** Cross-fade for images as they load (ms). */
   image: 320,
+  /** Small state changes that should feel immediate: focus rings, toggles (ms). */
+  quick: 180,
+  /** One view giving way to another: wizard steps, map and list, panels resizing (ms). */
+  swap: 240,
 } as const;
 
 // Airbnb Cereal is proprietary; the system font (SF Pro / Roboto) is used
