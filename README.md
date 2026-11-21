@@ -204,10 +204,10 @@ supabase/schema.sql       Postgres schema + RLS
 ## Connecting Supabase
 
 Copy `.env.example` to `.env`, fill `EXPO_PUBLIC_SUPABASE_URL` and
-`EXPO_PUBLIC_SUPABASE_ANON_KEY`, run `supabase/schema.sql` in the project's
-SQL editor, enable **Anonymous sign-ins** under Authentication → Providers,
-and restart `npx expo start`. Use the same Supabase project as the website
-so listings published in the app appear on zouza.ai.
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` (the publishable key), and restart `npx expo start`.
+The app uses the same Supabase project as zouza.ai. Its schema lives in the aurora-homes
+repo under `supabase/migrations/` (see `supabase/README.md`); never put the secret key in
+the app.
 
 ## TestFlight (from Windows, macOS or Linux — no Xcode needed)
 
