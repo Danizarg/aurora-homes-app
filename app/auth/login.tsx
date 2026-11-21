@@ -7,6 +7,7 @@ import { brand, colors, radius, spacing, typography } from "../../constants/them
 import { Button } from "../../components/ui/Button";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { signIn } from "../../lib/auth/service";
+import { authErrorMessage } from "../../lib/auth/errors";
 
 /** Airbnb "Log in or sign up" sheet: centered title, grouped inputs, gradient Continue, "or" divider, outline alternatives. */
 export default function LoginScreen() {
@@ -20,8 +21,8 @@ export default function LoginScreen() {
     setError(null);
     const result = await signIn(email, password);
     setLoading(false);
-    if (result.error) {
-      setError(result.error);
+    if (!result.ok) {
+      setError(authErrorMessage(result.code));
       return;
     }
     router.replace("/(tabs)");

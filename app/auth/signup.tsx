@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { signUp } from "../../lib/auth/service";
+import { authErrorMessage } from "../../lib/auth/errors";
 
 export default function SignupScreen() {
   const [fullName, setFullName] = useState("");
@@ -20,8 +21,8 @@ export default function SignupScreen() {
     setError(null);
     const result = await signUp(fullName, email, password);
     setLoading(false);
-    if (result.error) {
-      setError(result.error);
+    if (!result.ok) {
+      setError(authErrorMessage(result.code));
       return;
     }
     router.replace("/(tabs)");
