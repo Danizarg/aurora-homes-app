@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseAuthUrl } from "./url.ts";
+import { isIpHostUrl, parseAuthUrl } from "./url.ts";
 
 test("parse_expo_go_session", () => {
   assert.deepEqual(parseAuthUrl("exp://192.168.1.5:8081/--/auth/callback#access_token=a&refresh_token=r&type=signup"), {
@@ -45,4 +45,15 @@ test("missing_refresh_token_is_none", () => {
 
 test("trailing_slash_and_dev_host_path", () => {
   assert.equal(parseAuthUrl("zouza://auth/callback/#access_token=a&refresh_token=r").kind, "session");
+});
+
+test("ip_host_detected", () => {
+  assert.equal(isIpHostUrl("exp://192.168.18.88:8081/--/auth/callback"), true);
+  assert.equal(isIpHostUrl("exp://10.0.0.2/--/auth/callback"), true);
+});
+
+test("hostname_and_build_urls_not_ip", () => {
+  assert.equal(isIpHostUrl("exp://WorkPC.local:8081/--/auth/callback"), false);
+  assert.equal(isIpHostUrl("exp://192-168-18-88.sslip.io:8081/--/auth/callback"), false);
+  assert.equal(isIpHostUrl("zouza:///auth/callback"), false);
 });

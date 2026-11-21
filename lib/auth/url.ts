@@ -42,3 +42,13 @@ export function parseAuthUrl(url: string): AuthUrlResult {
 
   return { kind: "none" };
 }
+
+/**
+ * True when a link points at a raw IPv4 address (Expo Go's default, e.g. exp://192.168.1.5:8081).
+ * Supabase refuses such redirects whatever the allow-list says and sends people to the site URL
+ * instead, so in Expo Go the dev server must be started with a hostname
+ * (REACT_NATIVE_PACKAGER_HOSTNAME=<pc>.local or <ip-with-dashes>.sslip.io).
+ */
+export function isIpHostUrl(url: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\/\d{1,3}(\.\d{1,3}){3}(:\d+)?(\/|$)/i.test(url);
+}

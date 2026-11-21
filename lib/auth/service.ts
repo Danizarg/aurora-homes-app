@@ -4,13 +4,22 @@
 import * as Linking from "expo-linking";
 import { supabase, isSupabaseConfigured } from "../supabase/client";
 import { createAuthApi, type AuthApi } from "./core";
-import type { AuthUrlResult } from "./url";
+import { isIpHostUrl, type AuthUrlResult } from "./url";
 import { TERMS_VERSION } from "./terms";
 
 export type { AuthResult, CompleteResult } from "./core";
 
-/** Where every email link (confirm, reset) sends people: exp://<ip>:8081/--/auth/callback in Expo Go, zouza:///auth/callback in builds. */
-export const authRedirectUrl = () => Linking.createURL("/auth/callback");
+/** Where every email link (confirm, reset) sends people: exp://<host>:8081/--/auth/callback in Expo Go, zouza:///auth/callback in builds. */
+export const authRedirectUrl = () => {
+  const url = Linking.createURL("/auth/callback");
+  if (__DEV__ && isIpHostUrl(url)) {
+    console.warn(
+      `Email links can't come back to ${url}: Supabase refuses IP addresses and opens zouza.ai instead. ` +
+        'Start Expo with a hostname: $env:REACT_NATIVE_PACKAGER_HOSTNAME="<this PC>.local"; npx expo start --go',
+    );
+  }
+  return url;
+};
 
 const notConfigured = { ok: false as const, code: "not_configured" };
 const api: AuthApi | null = supabase ? createAuthApi(supabase.auth, { redirectUrl: authRedirectUrl, termsVersion: TERMS_VERSION }) : null;
