@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -9,37 +9,58 @@ import { TextField } from "../../components/ui/TextField";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { completeFromUrl, resendConfirmation, sendPasswordReset } from "../../lib/auth/service";
 import { createCallbackHandler } from "../../lib/auth/callbackHandler";
+import { authLinks } from "../../lib/auth/links";
 import { authErrorMessage } from "../../lib/auth/errors";
 import { useLeaveAuth } from "../../lib/auth/useLeaveAuth";
 
-// One handler for the whole app run, so a link that reaches this screen twice is used once.
+// One handler for the whole app run: a link that already signed someone in is never reused.
 const handleUrl = createCallbackHandler(completeFromUrl);
 
-type CallbackView = { kind: "working" } | { kind: "idle" } | { kind: "error"; code: string };
+type CallbackView = { kind: "working" } | { kind: "idle" } | { kind: "error"; code: string; url: string };
 
-/** Where "Confirm email address" and "Reset password" links land. Expo-router drops the #tokens, so the raw URL is read from expo-linking. */
+/**
+ * Where "Confirm email address" and "Reset password" links land. Expo-router drops the #tokens, so
+ * the raw URLs come from lib/auth/links, which has collected them since app start.
+ */
 export default function AuthCallbackScreen() {
-  const latestUrl = Linking.useLinkingURL();
   const leave = useLeaveAuth();
   const [view, setView] = useState<CallbackView>({ kind: "working" });
+  const mounted = useRef(true);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      for (const raw of [Linking.getLinkingURL(), latestUrl]) {
-        if (!raw) continue;
-        const outcome = await handleUrl(Linking.unwrapDevLaunchURL(raw));
-        if (!alive || !outcome) continue;
+  // Newest link first; the first one that means something decides what the screen shows.
+  const run = useCallback(
+    async (urls: string[]) => {
+      for (const raw of [...urls].reverse()) {
+        const url = Linking.unwrapDevLaunchURL(raw);
+        const outcome = await handleUrl(url);
+        if (!outcome || !mounted.current) continue;
         if (outcome.kind === "signedIn") return leave();
         if (outcome.kind === "recovery") return router.replace("/auth/reset-password");
-        return setView({ kind: "error", code: outcome.code });
+        return setView({ kind: "error", code: outcome.code, url });
       }
-      if (alive) setView((v) => (v.kind === "working" ? { kind: "idle" } : v));
-    })();
+      if (mounted.current) setView((v) => (v.kind === "working" ? { kind: "idle" } : v));
+    },
+    [leave],
+  );
+
+  useEffect(() => {
+    mounted.current = true;
+    // Deferred a tick so the effect itself never sets state (react-hooks/set-state-in-effect).
+    queueMicrotask(() => void run(authLinks.take()));
+    const off = authLinks.subscribe(() => {
+      setView({ kind: "working" });
+      void run(authLinks.take());
+    });
     return () => {
-      alive = false;
+      mounted.current = false;
+      off();
     };
-  }, [latestUrl, leave]);
+  }, [run]);
+
+  function retry(url: string) {
+    setView({ kind: "working" });
+    void run([url]);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -51,7 +72,7 @@ export default function AuthCallbackScreen() {
             <Text style={styles.body}>Signing you in…</Text>
           </View>
         ) : view.kind === "error" ? (
-          <LinkProblem code={view.code} onDone={leave} />
+          <LinkProblem code={view.code} onRetry={() => retry(view.url)} onDone={leave} />
         ) : (
           <>
             <Text style={styles.body}>There&apos;s nothing to finish here. Open the link from your email again if you need to.</Text>
@@ -63,7 +84,7 @@ export default function AuthCallbackScreen() {
   );
 }
 
-function LinkProblem({ code, onDone }: { code: string; onDone: () => void }) {
+function LinkProblem({ code, onRetry, onDone }: { code: string; onRetry: () => void; onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState<"confirm" | "reset" | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -83,6 +104,7 @@ function LinkProblem({ code, onDone }: { code: string; onDone: () => void }) {
   return (
     <>
       <Text style={styles.body}>{authErrorMessage(code)}</Text>
+      {code === "network" ? <Button label="Try again" onPress={onRetry} style={{ marginTop: spacing.lg }} /> : null}
       {code === "otp_expired" ? (
         <View style={{ marginTop: spacing.lg }}>
           <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" />
@@ -91,7 +113,7 @@ function LinkProblem({ code, onDone }: { code: string; onDone: () => void }) {
           {note ? <Text style={styles.note}>{note}</Text> : null}
         </View>
       ) : null}
-      <Button label="Back to Zouza" onPress={onDone} style={{ marginTop: spacing.lg }} />
+      <Button label="Back to Zouza" variant={code === "network" ? "outline" : "primary"} onPress={onDone} style={{ marginTop: spacing.lg }} />
     </>
   );
 }

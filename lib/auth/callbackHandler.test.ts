@@ -48,3 +48,18 @@ test("concurrent_same_url_handled_once", async () => {
   assert.deepEqual([a, b].filter(Boolean), [{ kind: "signedIn" }]);
   assert.equal(c.seen.length, 1);
 });
+
+test("error_url_handled_again_shows_error_again", async () => {
+  // Every expired link redirects to the same string, so a second used link must still get the expired screen.
+  const c = counting((r) => (r.kind === "error" ? { ok: false, code: r.code } : { ok: true, recovery: false }));
+  const handle = createCallbackHandler(c.complete);
+  assert.deepEqual(await handle(EXPIRED), { kind: "error", code: "otp_expired" });
+  assert.deepEqual(await handle(EXPIRED), { kind: "error", code: "otp_expired" });
+});
+
+test("failed_session_can_retry", async () => {
+  let calls = 0;
+  const handle = createCallbackHandler(async () => (++calls === 1 ? { ok: false, code: "network" } : { ok: true, recovery: false }));
+  assert.deepEqual(await handle(SESSION), { kind: "error", code: "network" });
+  assert.deepEqual(await handle(SESSION), { kind: "signedIn" });
+});

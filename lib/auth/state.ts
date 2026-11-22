@@ -18,3 +18,29 @@ export function sessionStateFrom(session: SessionLike, profileName: string | nul
     fullName: profileName ?? user.user_metadata?.full_name ?? "",
   };
 }
+
+/**
+ * Keeps a SessionState in step with Supabase: the account shows at once (so a screen opened right
+ * after a link never sees "signed out"), the display name from public.profiles follows, and a name
+ * that arrives after the session changed is dropped.
+ */
+export function createSessionSync(set: (s: SessionState) => void, loadName: (userId: string) => Promise<string | null>) {
+  let latest = 0;
+  let alive = true;
+  return {
+    apply(session: SessionLike) {
+      const ticket = ++latest;
+      set(sessionStateFrom(session, null));
+      if (!session) return;
+      loadName(session.user.id).then(
+        (name) => {
+          if (alive && ticket === latest && name) set(sessionStateFrom(session, name));
+        },
+        () => {},
+      );
+    },
+    stop() {
+      alive = false;
+    },
+  };
+}

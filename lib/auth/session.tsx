@@ -6,7 +6,9 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { AppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client";
-import { sessionStateFrom, type SessionState } from "./state";
+import { createSessionSync, type SessionState } from "./state";
+// Registers the app-wide link listener as early as the root layout loads (see ./links).
+import "./links";
 
 const SessionContext = createContext<SessionState>({ status: "loading" });
 
@@ -22,30 +24,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const client = supabase;
     if (!client) return;
-    let alive = true;
-    let latest = 0;
-
-    const apply = async (session: Session | null) => {
-      const ticket = ++latest;
-      // Show the account at once, then fill in the name the database holds.
-      if (alive) setState(sessionStateFrom(session, null));
-      if (!session) return;
-      const name = await profileName(session.user.id);
-      if (alive && ticket === latest && name) setState(sessionStateFrom(session, name));
-    };
-
-    client.auth.getSession().then(({ data }) => apply(data.session));
-    // The callback must not await other auth calls (supabase-js deadlock), so the work is deferred.
-    const { data: sub } = client.auth.onAuthStateChange((_event, session) => {
-      setTimeout(() => apply(session), 0);
-    });
+    const sync = createSessionSync(setState, profileName);
+    client.auth.getSession().then(({ data }) => sync.apply(data.session));
+    // Applied at once, so a screen opened right after an email link already sees the account. The
+    // name lookup inside apply is not awaited here (no other auth calls are awaited in the callback).
+    const { data: sub } = client.auth.onAuthStateChange((_event, session) => sync.apply(session));
 
     const refresh = (s: string | null | undefined) => (s === "active" ? client.auth.startAutoRefresh() : client.auth.stopAutoRefresh());
     refresh(AppState.currentState);
     const appState = AppState.addEventListener("change", refresh);
 
     return () => {
-      alive = false;
+      sync.stop();
       sub.subscription.unsubscribe();
       appState.remove();
       client.auth.stopAutoRefresh();
