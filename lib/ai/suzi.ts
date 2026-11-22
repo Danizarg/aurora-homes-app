@@ -117,7 +117,8 @@ interface GeneratedFromWeb {
 export async function generateListing(input: ListingDraftInput): Promise<AiGeneratedContent> {
   const local = await generateLocally(input);
 
-  const written = await post<GeneratedFromWeb>("/api/suzi/generate", { draft: input }, 60_000);
+  // Capped at 20 s: past that the on-phone version is used, so nobody waits on a slow model.
+  const written = await post<GeneratedFromWeb>("/api/suzi/generate", { draft: input }, 20_000);
   if (!written?.title) return local;
 
   return {
