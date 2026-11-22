@@ -13,12 +13,16 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
+// Expo's web pre-render runs the app in Node, where there is no window and AsyncStorage throws;
+// an unhandled rejection there takes down the whole dev server. On the server: no storage, no refresh.
+const isServer = typeof window === "undefined";
+
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
       auth: {
-        storage: AsyncStorage,
-        autoRefreshToken: true,
-        persistSession: true,
+        storage: isServer ? undefined : AsyncStorage,
+        autoRefreshToken: !isServer,
+        persistSession: !isServer,
         // Email links come back through app/auth/callback, which sets the session itself.
         detectSessionInUrl: false,
         flowType: "implicit",
