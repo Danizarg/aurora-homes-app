@@ -7,9 +7,12 @@ import { colors, layout, radius, shadow, spacing, typography } from "../../const
 import { Avatar } from "../../components/ui/Avatar";
 import { Divider } from "../../components/ui/Divider";
 import { PressableScale } from "../../components/ui/PressableScale";
+import { Button } from "../../components/ui/Button";
 import { useDiscovery } from "../../lib/store/discovery";
 import { haptic } from "../../lib/ui/haptics";
-import { getBookingRequests, getSavedListingIds, getStoredListings, setMockSession } from "../../lib/mock/storage";
+import { getBookingRequests, getSavedListingIds, getStoredListings } from "../../lib/mock/storage";
+import { useSession } from "../../lib/auth/session";
+import { signOut } from "../../lib/auth/service";
 
 type MenuItem = { icon: keyof typeof Ionicons.glyphMap; label: string; route: string };
 
@@ -37,6 +40,8 @@ export default function ProfileScreen() {
   const setOnboardingDone = useDiscovery((s) => s.setOnboardingDone);
   const resetAll = useDiscovery((s) => s.resetAll);
   const [confirmReset, setConfirmReset] = useState(false);
+  const session = useSession();
+  const displayName = session.status === "signedIn" ? session.fullName || session.email.split("@")[0] : "";
 
   // Two taps within a few seconds, so a stray touch can't wipe the device state.
   function startFresh() {
@@ -67,9 +72,21 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.identityCard}>
-          <Avatar name="Zouza" size={88} />
-          <Text style={styles.name}>Zouza Demo</Text>
-          <Text style={styles.role}>Guest · Not yet verified</Text>
+          {session.status === "signedIn" ? (
+            <>
+              <Avatar name={displayName} size={88} />
+              <Text style={styles.name}>{displayName}</Text>
+              <Text style={styles.role}>{session.email}</Text>
+            </>
+          ) : session.status === "signedOut" ? (
+            <>
+              <Avatar name="Zouza" size={88} />
+              <Text style={styles.name}>Not logged in</Text>
+              <Button label="Log in or sign up" variant="dark" size="sm" onPress={() => router.push("/auth/login")} style={{ marginTop: spacing.md }} />
+            </>
+          ) : (
+            <Avatar name="Zouza" size={88} />
+          )}
         </View>
 
         <View style={styles.tiles}>
@@ -122,18 +139,18 @@ export default function ProfileScreen() {
 
         <Divider gap={spacing.md} />
 
-        <PressableScale
-          pressedScale={0.96}
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={async () => {
-            await setMockSession(null);
-            router.replace("/auth/login");
-          }}
-          style={{ paddingVertical: spacing.sm, alignSelf: "flex-start" }}
-        >
-          <Text style={styles.logout}>Log out</Text>
-        </PressableScale>
+        {session.status === "signedIn" ? (
+          <PressableScale
+            pressedScale={0.96}
+            accessibilityRole="button"
+            hitSlop={8}
+            // The card above switches to "Not logged in" in place; nothing to navigate to.
+            onPress={() => void signOut()}
+            style={{ paddingVertical: spacing.sm, alignSelf: "flex-start" }}
+          >
+            <Text style={styles.logout}>Log out</Text>
+          </PressableScale>
+        ) : null}
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
