@@ -8,6 +8,8 @@ import { useSpeechToText } from "./useSpeechToText";
  * line and, when an answer handler is given, listens hands-free afterwards
  * and passes on what was heard. Each new `say` cancels the previous turn, so
  * stale answers never land on a later step. Inert when `enabled` is false.
+ * `onStart` fires when the line starts playing (at once when spoken replies are off), so a screen
+ * can show its text in step with the voice.
  */
 export function useVoiceGuide(enabled: boolean) {
   const stt = useSpeechToText();
@@ -30,7 +32,7 @@ export function useVoiceGuide(enabled: boolean) {
   }, []);
 
   const say = useCallback(
-    (text: string, onAnswer?: (heard: string) => void) => {
+    (text: string, onAnswer?: (heard: string) => void, onStart?: () => void) => {
       if (!enabled) return;
       const id = ++turn.current;
       lastHandler.current = onAnswer ?? null;
@@ -38,8 +40,11 @@ export function useVoiceGuide(enabled: boolean) {
       const then = () => {
         if (onAnswer) listen(id, onAnswer);
       };
-      if (useDiscovery.getState().voice.speak) void tts.speak(text, { onDone: then, onError: then });
-      else then();
+      if (useDiscovery.getState().voice.speak) void tts.speak(text, { onStart, onDone: then, onError: then });
+      else {
+        onStart?.();
+        then();
+      }
     },
     [enabled, listen]
   );

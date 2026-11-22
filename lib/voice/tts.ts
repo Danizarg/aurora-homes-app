@@ -195,8 +195,19 @@ const CLIP_DIR = "suza-voice";
 /** Any real clip is far larger than this; an error body posing as a clip is not. */
 const MIN_CLIP_BYTES = 4096;
 
+// A clip being downloaded (by prefetch or speak) is shared, so a half-written file is never played.
+const downloads = new Map<string, Promise<string>>();
+
 /** Fetch the clip to the app's cache as <id>.wav and return the file's address. */
-async function fetchClipToFile(clipUrl: string, clipId: string): Promise<string> {
+function fetchClipToFile(clipUrl: string, clipId: string): Promise<string> {
+  const running = downloads.get(clipId);
+  if (running) return running;
+  const job = downloadClip(clipUrl, clipId).finally(() => downloads.delete(clipId));
+  downloads.set(clipId, job);
+  return job;
+}
+
+async function downloadClip(clipUrl: string, clipId: string): Promise<string> {
   const dir = new Directory(Paths.cache, CLIP_DIR);
   if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
   const file = new File(dir, `${clipId}.wav`);
@@ -272,5 +283,27 @@ export const tts = {
   },
   isSpeaking() {
     return speaking;
+  },
+  /**
+   * Render and download a line ahead of time, without playing it, so a later speak(text) starts
+   * almost at once (the server caches clips by text, the phone keeps the file). Best effort: any
+   * failure just means that line is fetched when it is spoken, as before.
+   */
+  async prefetch(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || remoteBroken || Platform.OS === "web") return;
+    try {
+      if (!(await suzaEndpointReady("/api/suza/speak"))) return;
+      const url = suzaUrl("/api/suza/speak");
+      if (!url) return;
+      const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ text: trimmed }) });
+      if (!res.ok) return;
+      const data = (await res.json()) as { id?: string };
+      if (!data.id) return;
+      const clipUrl = suzaUrl(`/api/suza/clip/${encodeURIComponent(data.id)}.wav`);
+      if (clipUrl) await fetchClipToFile(clipUrl, data.id);
+    } catch {
+      // best effort
+    }
   },
 };

@@ -40,6 +40,8 @@ import { createListingInSupabase, uploadListingImages } from "../../lib/supabase
 import { useSession } from "../../lib/auth/session";
 import { useDiscovery } from "../../lib/store/discovery";
 import { useVoiceGuide } from "../../lib/voice/useVoiceGuide";
+import { tts } from "../../lib/voice/tts";
+import { MAX_ROOMS, asksRentKind, parseCount, positioningForPriceMode, priceModeOf, type PriceMode } from "../../lib/listings/wizardAnswers";
 import { spokenGoOn, spokenNumber, spokenSkip, spokenYesNo } from "../../lib/suza/spoken";
 import { haptic } from "../../lib/ui/haptics";
 
@@ -72,6 +74,8 @@ interface ChatQuestion {
   ai: string;
   quickReplies?: { label: string; value: string | number | boolean }[];
   keyboardType?: "number-pad" | "default";
+  /** A room count: quick numbers plus a "+" that opens the number keypad. */
+  count?: boolean;
 }
 
 const questions: ChatQuestion[] = [
@@ -83,11 +87,13 @@ const questions: ChatQuestion[] = [
   {
     field: "bedrooms",
     ai: "How many bedrooms should I list?",
+    count: true,
     quickReplies: [1, 2, 3, 4, 5].map((n) => ({ label: `${n}`, value: n })),
   },
   {
     field: "bathrooms",
     ai: "How many bathrooms?",
+    count: true,
     quickReplies: [1, 2, 3].map((n) => ({ label: `${n}`, value: n })),
   },
   {
@@ -107,11 +113,11 @@ const questions: ChatQuestion[] = [
   },
   {
     field: "positioning",
-    ai: "Should I position this as a premium long-term rental, holiday stay, or sale listing?",
+    // Rent or sale is chosen on the price step; this only asks which kind of rental.
+    ai: "Is it a long-term rental or a holiday stay?",
     quickReplies: [
       { label: "Long-term rental", value: "rent_long" },
       { label: "Holiday stay", value: "rent_holiday" },
-      { label: "Sale", value: "sale" },
     ],
   },
 ];
@@ -142,6 +148,14 @@ export default function AiListingBuilder() {
   const [answers, setAnswers] = useState<ChatAnswers>(presetPositioning ? { positioning: presetPositioning } : {});
   const [geo, setGeo] = useState<{ lat: number; lng: number; approximate: boolean } | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
+  const [customCount, setCustomCount] = useState(false);
+  const [countError, setCountError] = useState<string | null>(null);
+  const introRef = useRef<string | null>(null);
+  const priceMode: PriceMode = priceModeOf(answers.positioning);
+
+  function setPriceMode(mode: PriceMode) {
+    setAnswers((prev) => ({ ...prev, positioning: positioningForPriceMode(mode, prev.positioning) }));
+  }
 
   const [generated, setGenerated] = useState<AiGeneratedContent | null>(null);
   const [stageIndex, setStageIndex] = useState(0);
@@ -177,14 +191,17 @@ export default function AiListingBuilder() {
   function startChat() {
     const detectedFeatures = detectFeaturesFromPhotos(address, images.length);
     setDetected(detectedFeatures);
-    setMessages([{ id: "intro", from: "ai", text: describeDetectedFeatures(detectedFeatures) }]);
+    const intro = describeDetectedFeatures(detectedFeatures);
+    introRef.current = intro;
+    setMessages([{ id: "intro", from: "ai", text: intro }]);
+    if (guided && useDiscovery.getState().voice.speak) void tts.prefetch(`${intro} ${questions[0].ai}`);
     setQuestionIndex(0);
     setStep("chat");
     setTimeout(() => askNext(0), 500);
   }
 
   function askNext(index: number) {
-    if (index < questions.length && questions[index].field === "positioning" && presetPositioning) {
+    if (index < questions.length && questions[index].field === "positioning" && !asksRentKind(priceModeOf(answers.positioning), presetPositioning)) {
       askNext(index + 1);
       setQuestionIndex(index + 1);
       return;
@@ -200,7 +217,31 @@ export default function AiListingBuilder() {
       }, 900);
       return;
     }
-    setMessages((prev) => [...prev, { id: `q-${index}`, from: "ai", text: questions[index].ai }]);
+    presentQuestion(index);
+  }
+
+  // A question shows when Suzi starts saying it (at most 2.5 s late, so it never hangs), and the
+  // next question's audio loads while this one is answered, so voice and text stay together.
+  function presentQuestion(index: number) {
+    const id = `q-${index}`;
+    const text = questions[index].ai;
+    let shown = false;
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      setMessages((prev) => (prev.some((m) => m.id === id) ? prev : [...prev, { id, from: "ai", text }]));
+    };
+    if (!guided) return show();
+    spokenIds.current.add(id);
+    let spoken = text;
+    if (introRef.current && !spokenIds.current.has("intro")) {
+      spokenIds.current.add("intro");
+      spoken = `${introRef.current} ${text}`;
+    }
+    guide.say(spoken, (h) => handlers.current.chat(index, h), show);
+    setTimeout(show, 2500);
+    const next = questions[index + 1];
+    if (next && useDiscovery.getState().voice.speak) void tts.prefetch(next.ai);
   }
 
   function answerCurrentQuestion(label: string, value: string | number | boolean) {
@@ -208,9 +249,20 @@ export default function AiListingBuilder() {
     setAnswers((prev) => ({ ...prev, [question.field]: value }));
     setMessages((prev) => [...prev, { id: `a-${questionIndex}`, from: "user", text: label }]);
     setTextAnswer("");
+    setCustomCount(false);
+    setCountError(null);
     const next = questionIndex + 1;
     setQuestionIndex(next);
     setTimeout(() => askNext(next), 450);
+  }
+
+  function submitCount() {
+    const n = parseCount(textAnswer);
+    if (n === null) {
+      setCountError(`Enter a number from 0 to ${MAX_ROOMS}.`);
+      return;
+    }
+    answerCurrentQuestion(String(n), n);
   }
 
   function submitTextAnswer() {
@@ -262,11 +314,18 @@ export default function AiListingBuilder() {
         return prev + 1;
       });
     }, 550);
+    let alive = true;
     generateListing(draftInput()).then((content) => {
+      if (!alive) return;
+      clearInterval(interval);
       setGenerated(content);
-      setTimeout(() => setStep("review"), generationStages.length * 550 + 300);
+      setStageIndex(generationStages.length); // every stage ticked
+      setTimeout(() => alive && setStep("review"), 350);
     });
-    return () => clearInterval(interval);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -407,6 +466,11 @@ export default function AiListingBuilder() {
       submitAddress(place);
     };
     handlers.current.price = (h) => {
+      const saysSale = /\b(sale|sell|selling)\b/i.test(h);
+      const saysRent = /\b(rent|rental|monthly|a month|per month)\b/i.test(h);
+      if (saysSale) setPriceMode("sale");
+      else if (saysRent) setPriceMode("rent");
+      const sale = saysSale ? true : saysRent ? false : isSale;
       if (spokenSkip(h)) {
         setPriceInput("");
         guide.say("No problem, you can add a price later.");
@@ -419,7 +483,7 @@ export default function AiListingBuilder() {
         return;
       }
       setPriceInput(String(Math.round(n)));
-      guide.say(`${Math.round(n).toLocaleString("en-GB")} euros${isSale ? "" : " a month"}. Perfect.`);
+      guide.say(`${Math.round(n).toLocaleString("en-GB")} euros${sale ? "" : " a month"}. Perfect.`);
       startChat();
     };
     handlers.current.chat = (i, h) => {
@@ -433,6 +497,9 @@ export default function AiListingBuilder() {
       } else if (q.quickReplies?.every((r) => typeof r.value === "boolean")) {
         const yes = spokenYesNo(h);
         if (yes !== null) answered = { label: yes ? "Yes" : "No", value: yes };
+      } else if (q.count) {
+        const n = spokenNumber(h);
+        if (n !== null && Number.isInteger(n) && n >= 0 && n <= MAX_ROOMS) answered = { label: String(n), value: n };
       } else if (q.keyboardType === "number-pad") {
         const n = spokenNumber(h);
         if (n !== null && n >= 0) answered = { label: String(n), value: n };
@@ -483,7 +550,9 @@ export default function AiListingBuilder() {
         guide.say(
           isSale
             ? "What price are you asking? You can also say skip and set it later."
-            : "What monthly rent would you like? You can also say skip and set it later.",
+            : answers.positioning || presetPositioning
+              ? "What monthly rent would you like? You can also say skip and set it later."
+              : "Is it for rent or for sale, and at what price? You can also say skip and set it later.",
           (h) => handlers.current.price(h)
         );
         break;
@@ -498,7 +567,7 @@ export default function AiListingBuilder() {
         break;
       case "preview":
         guide.say(
-          "This is how it will look. Publishing costs twenty euros a month while it's live, with no commission. Shall I publish it?",
+          "This is how it will look. Shall I publish it?",
           (h) => handlers.current.preview(h)
         );
         break;
@@ -509,7 +578,7 @@ export default function AiListingBuilder() {
       default:
         break;
     }
-  }, [guided, step, guide, isSale, generated]);
+  }, [guided, step, guide, isSale, generated, answers.positioning, presetPositioning]);
 
   // Photos can only be picked by hand: once some are in, Suza offers to move on.
   const hasPhotos = images.length > 0;
@@ -518,22 +587,6 @@ export default function AiListingBuilder() {
     spokenIds.current.add("photos-added");
     guide.say("Lovely. Add more if you like, or say next.", (h) => handlers.current.photos(h));
   }, [guided, step, hasPhotos, guide]);
-
-  // In the chat, read each question aloud (with Suza's first impression before the first one) and listen.
-  useEffect(() => {
-    if (!guided || step !== "chat") return;
-    const last = messages[messages.length - 1];
-    if (!last || last.from !== "ai" || !last.id.startsWith("q-") || spokenIds.current.has(last.id)) return;
-    spokenIds.current.add(last.id);
-    const intro = messages.find((m) => m.id === "intro");
-    let text = last.text;
-    if (intro && !spokenIds.current.has("intro")) {
-      spokenIds.current.add("intro");
-      text = `${intro.text} ${text}`;
-    }
-    const i = Number(last.id.slice(2));
-    guide.say(text, (h) => handlers.current.chat(i, h));
-  }, [guided, step, messages, guide]);
 
   function goBack() {
     const idx = stepOrder.indexOf(step);
@@ -643,6 +696,23 @@ export default function AiListingBuilder() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets>
           <Text style={styles.stepTitle}>Now, set your price</Text>
           <Text style={styles.stepBody}>You can leave this blank and set it later — Suzi will still write the full listing.</Text>
+          <View style={styles.modeSwitch} accessibilityRole="radiogroup">
+            {(["rent", "sale"] as const).map((m) => (
+              <PressableScale
+                key={m}
+                pressedScale={0.97}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: priceMode === m }}
+                style={[styles.modeOption, priceMode === m && styles.modeOptionActive]}
+                onPress={() => {
+                  haptic.select();
+                  setPriceMode(m);
+                }}
+              >
+                <Text style={[styles.modeText, priceMode === m && styles.modeTextActive]}>{m === "rent" ? "Rent" : "Sale"}</Text>
+              </PressableScale>
+            ))}
+          </View>
           <View style={styles.priceEntry}>
             <Text style={styles.priceCurrency}>€</Text>
             <TextInput
@@ -654,8 +724,11 @@ export default function AiListingBuilder() {
               placeholderTextColor={colors.textTertiary}
               autoFocus
             />
+            {priceMode === "rent" ? <Text style={styles.priceUnit}>/ month</Text> : null}
           </View>
-          <Text style={styles.priceHint}>Per month for rentals, total for sales. Suzi adds utilities and deposit estimates for you. Publishing costs €20/month while the listing is live, with no commission.</Text>
+          <Text style={styles.priceHint}>
+            {priceMode === "rent" ? "The monthly rent. Suzi adds utilities and deposit estimates for you." : "The full asking price."}
+          </Text>
         </ScrollView>
         </StepFrame>
       )}
@@ -684,7 +757,36 @@ export default function AiListingBuilder() {
 
           {currentQuestion && questionIndex < questions.length && (
             <View style={[styles.chatInputArea, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-              {currentQuestion.quickReplies ? (
+              {currentQuestion.count && customCount ? (
+                <View>
+                  <View style={styles.inputRow}>
+                    <TextInput
+                      style={styles.chatInput}
+                      value={textAnswer}
+                      onChangeText={(v) => {
+                        setTextAnswer(v.replace(/[^0-9]/g, ""));
+                        setCountError(null);
+                      }}
+                      placeholder={currentQuestion.field === "bathrooms" ? "Number of bathrooms" : "Number of bedrooms"}
+                      placeholderTextColor={colors.textSecondary}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      autoFocus
+                      onSubmitEditing={submitCount}
+                    />
+                    <PressableScale
+                      pressedScale={0.9}
+                      accessibilityRole="button"
+                      accessibilityLabel="Send answer"
+                      style={[styles.sendButton, !textAnswer.trim() && styles.sendIdle]}
+                      onPress={submitCount}
+                    >
+                      <Ionicons name="arrow-up" size={18} color={colors.white} />
+                    </PressableScale>
+                  </View>
+                  {countError ? <Text style={styles.countError}>{countError}</Text> : null}
+                </View>
+              ) : currentQuestion.quickReplies ? (
                 <View style={styles.chipRow}>
                   {currentQuestion.quickReplies.map((qr) => (
                     <PressableScale
@@ -700,6 +802,21 @@ export default function AiListingBuilder() {
                       <Text style={styles.replyChipText}>{qr.label}</Text>
                     </PressableScale>
                   ))}
+                  {currentQuestion.count ? (
+                    <PressableScale
+                      pressedScale={0.95}
+                      accessibilityRole="button"
+                      accessibilityLabel="Enter another number"
+                      style={styles.replyChip}
+                      onPress={() => {
+                        haptic.select();
+                        setTextAnswer("");
+                        setCustomCount(true);
+                      }}
+                    >
+                      <Ionicons name="add" size={16} color={colors.text} />
+                    </PressableScale>
+                  ) : null}
                 </View>
               ) : (
                 <View style={styles.inputRow}>
@@ -953,6 +1070,13 @@ const styles = StyleSheet.create({
   priceEntry: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.lg },
   priceCurrency: { fontSize: 44, fontWeight: "700", color: colors.text, marginRight: 4 },
   priceInput: { fontSize: 56, fontWeight: "700", color: colors.text, minWidth: 80, textAlign: "center", padding: 0 },
+  modeSwitch: { flexDirection: "row", alignSelf: "center", backgroundColor: colors.bgSecondary, borderRadius: radius.pill, padding: 4, marginTop: spacing.lg },
+  modeOption: { paddingVertical: spacing.sm, paddingHorizontal: spacing.xl, borderRadius: radius.pill },
+  modeOptionActive: { backgroundColor: colors.white, ...shadow.card },
+  modeText: { ...typography.bodyBold, color: colors.textSecondary },
+  modeTextActive: { color: colors.text },
+  priceUnit: { ...typography.h3, color: colors.textSecondary, marginLeft: spacing.xs, alignSelf: "flex-end", marginBottom: spacing.sm },
+  countError: { ...typography.small, color: colors.error, marginTop: spacing.xs },
   priceHint: { ...typography.small, color: colors.textSecondary, textAlign: "center", marginTop: spacing.lg },
 
   chatContent: { padding: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },
