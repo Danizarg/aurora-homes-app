@@ -37,7 +37,7 @@ import type { AiGeneratedContent, Listing } from "../../types";
 import { addStoredListing } from "../../lib/mock/storage";
 import { isSupabaseConfigured } from "../../lib/supabase/client";
 import { createListingInSupabase, uploadListingImages } from "../../lib/supabase/listings";
-import { getOrCreateSupabaseUserId } from "../../lib/auth/service";
+import { useSession } from "../../lib/auth/session";
 import { useDiscovery } from "../../lib/store/discovery";
 import { useVoiceGuide } from "../../lib/voice/useVoiceGuide";
 import { spokenGoOn, spokenNumber, spokenSkip, spokenYesNo } from "../../lib/suza/spoken";
@@ -148,6 +148,10 @@ export default function AiListingBuilder() {
   const [publishedId, setPublishedId] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishedToSupabase, setPublishedToSupabase] = useState(false);
+  const session = useSession();
+  // Publishing needs an account (anonymous publishing is off). Without Supabase settings the app
+  // stays a local demo and publishes to the phone.
+  const needsAccount = isSupabaseConfigured && session.status !== "signedIn";
 
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -311,11 +315,23 @@ export default function AiListingBuilder() {
   }
 
   async function publish() {
+    if (needsAccount) {
+      // Log-in opens as a sheet over this wizard and closes back to this step, listing intact.
+      router.push("/auth/login");
+      return;
+    }
     setPublishing(true);
+    try {
+      await publishNow();
+    } finally {
+      setPublishing(false);
+    }
+  }
 
-    if (isSupabaseConfigured) {
-      const ownerId = await getOrCreateSupabaseUserId();
-      if (ownerId) {
+  async function publishNow() {
+    if (session.status === "signedIn") {
+      const ownerId = session.userId;
+      try {
         const tempId = newId();
         const uploadedUrls = await uploadListingImages(ownerId, tempId, images);
         const draftListing = buildListing(tempId, ownerId, uploadedUrls);
@@ -325,22 +341,21 @@ export default function AiListingBuilder() {
           setPublishedId(supabaseId);
           setPublishedToSupabase(true);
           setStep("success");
-          setPublishing(false);
           return;
         }
+      } catch {
+        // A failed upload or insert falls through to saving on the phone below.
       }
     }
 
-    // Falls back to local mock storage when Supabase isn't configured, or if
-    // the Supabase write failed (e.g. anonymous sign-ins not enabled yet) —
-    // keeps the flow fully demoable with no backend.
+    // Falls back to the phone when Supabase isn't configured, or when the Supabase write fails
+    // (until plan 3 moves lib/supabase/listings.ts to the shared schema's column names).
     const id = newId("local-");
     const listing = buildListing(id, "me", images);
     await addStoredListing(listing);
     invalidateRemoteListings();
     setPublishedId(id);
     setStep("success");
-    setPublishing(false);
   }
 
   /** Move on from the address step, resolving the typed (or spoken) area to real coordinates in the background. */
@@ -439,7 +454,7 @@ export default function AiListingBuilder() {
     };
     handlers.current.preview = (h) => {
       if (/\b(publish|post|go live|yes|yeah|do it|go ahead|sure)\b/i.test(h)) {
-        guide.say("Publishing it now.");
+        guide.say(needsAccount ? "First, log in or create an account. Your listing stays right here." : "Publishing it now.");
         void publish();
       } else {
         guide.say("No problem. Tap Publish whenever you're ready.");
@@ -858,6 +873,9 @@ export default function AiListingBuilder() {
         </View>
       ) : null}
 
+      {showFooter && step === "preview" && needsAccount ? (
+        <Text style={styles.gateNote}>Log in or create an account to publish. Your listing stays here.</Text>
+      ) : null}
       {showFooter ? (
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
           <Button label="Back" variant="link" onPress={() => (step === "photos" ? router.back() : goBack())} />
@@ -988,6 +1006,7 @@ const styles = StyleSheet.create({
   previewPriceAmount: { ...typography.smallBold, fontSize: 15, color: colors.text },
   previewPriceUnit: { ...typography.small, color: colors.text },
 
+  gateNote: { ...typography.small, color: colors.textSecondary, textAlign: "center", paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   footer: {
     position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.divider,

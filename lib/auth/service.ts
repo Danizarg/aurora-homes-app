@@ -39,15 +39,3 @@ export async function getCurrentUserId(): Promise<string | null> {
   return data.session?.user.id ?? null;
 }
 
-/**
- * Old anonymous-publish path, kept only until create-listing asks for a real account (plan 2,
- * Task 7). Anonymous sign-ins are off in Supabase, so this returns null unless someone is signed in.
- */
-export async function getOrCreateSupabaseUserId(): Promise<string | null> {
-  if (!isSupabaseConfigured || !supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  if (data.session?.user) return data.session.user.id;
-  const { data: anon, error } = await supabase.auth.signInAnonymously();
-  if (error || !anon.user) return null;
-  return anon.user.id;
-}

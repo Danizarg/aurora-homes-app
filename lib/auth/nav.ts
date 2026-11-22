@@ -7,3 +7,16 @@ export function authRoutesOnTop(routeNames: string[]): number {
   for (let i = routeNames.length - 1; i >= 0 && routeNames[i].startsWith("auth/"); i--) n++;
   return n;
 }
+
+type RouteLike = { name: string; state?: { routes?: RouteLike[] } };
+
+/**
+ * Route names of the app's own Stack (app/_layout.tsx), bottom to top. expo-router puts that Stack
+ * inside a hidden "__root" route of the navigation container, so the container's root state alone
+ * shows just ["__root"].
+ */
+export function appStackRouteNames(rootState: { routes?: RouteLike[] } | undefined): string[] {
+  const routes = rootState?.routes ?? [];
+  const inner = routes.length === 1 && routes[0].name === "__root" ? (routes[0].state?.routes ?? []) : routes;
+  return inner.map((r) => r.name);
+}

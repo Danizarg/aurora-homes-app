@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { signOut } from "../auth/service";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { GeoPoint, Intent, SearchCriteria, SearchResult, SearchTarget } from "../../types/search";
@@ -111,6 +112,9 @@ export const useDiscovery = create<DiscoveryState>()(
       ...initialState,
 
       resetAll: async () => {
+        // Sign out first: clearing storage alone would leave the account signed in on the server and
+        // the session screen state stale until a restart.
+        await signOut();
         // Everything the app keeps on the device: this store, saved homes, local
         // listings, bookings, conversations, demo session and geo caches.
         await AsyncStorage.clear().catch(() => {});

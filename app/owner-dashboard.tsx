@@ -15,7 +15,8 @@ import { SkeletonRow } from "../components/ui/Skeleton";
 import { Avatar } from "../components/ui/Avatar";
 import { getBookingRequests, getStoredListings, updateBookingStatus } from "../lib/mock/storage";
 import { describeBooking } from "../lib/booking/dates";
-import { getCurrentUserId } from "../lib/auth/service";
+import { useSession } from "../lib/auth/session";
+import { isSupabaseConfigured } from "../lib/supabase/client";
 import { fetchMyListings } from "../lib/supabase/listings";
 import { priceLine } from "../lib/listings/presentation";
 import type { BookingRequest, Listing } from "../types";
@@ -27,13 +28,15 @@ export default function OwnerDashboardScreen() {
   // Until the first read comes back there is nothing true to say, so the page
   // holds placeholder rows instead of flashing "No published listings yet".
   const [loaded, setLoaded] = useState(false);
+  const session = useSession();
+  const signedOut = isSupabaseConfigured && session.status === "signedOut";
+  const userId = session.status === "signedIn" ? session.userId : null;
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
         try {
           const localListings = await getStoredListings();
-          const userId = await getCurrentUserId();
           const supabaseListings = userId ? await fetchMyListings(userId) : [];
           setListings([...supabaseListings, ...localListings]);
           setRequests(await getBookingRequests());
@@ -41,7 +44,7 @@ export default function OwnerDashboardScreen() {
           setLoaded(true);
         }
       })();
-    }, [])
+    }, [userId])
   );
 
   const published = listings.filter((l) => l.status === "published");
@@ -53,7 +56,12 @@ export default function OwnerDashboardScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Your listings</Text>
 
-        {!loaded ? (
+        {signedOut ? (
+          <Reveal variant="fade">
+            <Text style={styles.muted}>Log in to see and manage your listings.</Text>
+            <Button label="Log in" variant="dark" onPress={() => router.push("/auth/login")} style={{ marginTop: spacing.md, alignSelf: "flex-start" }} />
+          </Reveal>
+        ) : !loaded || session.status === "loading" ? (
           <View>
             <SkeletonRow />
             <SkeletonRow />
