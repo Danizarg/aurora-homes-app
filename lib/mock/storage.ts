@@ -1,5 +1,5 @@
 // Local fallback persistence used whenever Supabase is not configured, or
-// for on-device state (drafts, saved listings, session, bookings and chats)
+// for on-device state (drafts, saved listings, bookings and chats)
 // that never needs a backend. Backed by AsyncStorage so it survives app
 // restarts in Expo Go.
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,7 +8,6 @@ import type { BookingRequest, BookingStatus, Conversation, Listing, Message } fr
 const KEYS = {
   listings: "aurora.mock.listings",
   savedListings: "aurora.mock.savedListings",
-  session: "aurora.mock.session",
   draft: "aurora.mock.draft",
   bookings: "zouza.bookings",
   conversations: "zouza.conversations",
@@ -51,25 +50,6 @@ export async function toggleSavedListing(listingId: string): Promise<string[]> {
     : [...current, listingId];
   await writeJson(KEYS.savedListings, next);
   return next;
-}
-
-// ---------------------------------------------------------------- session
-
-export interface MockSession {
-  fullName: string;
-  email: string;
-}
-
-export async function getMockSession(): Promise<MockSession | null> {
-  return readJson<MockSession | null>(KEYS.session, null);
-}
-
-export async function setMockSession(session: MockSession | null): Promise<void> {
-  if (session) {
-    await writeJson(KEYS.session, session);
-  } else {
-    await AsyncStorage.removeItem(KEYS.session);
-  }
 }
 
 // ---------------------------------------------------------------- bookings

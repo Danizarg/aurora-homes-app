@@ -6,45 +6,72 @@ import { Ionicons } from "@expo/vector-icons";
 import { brand, colors, radius, spacing, typography } from "../../constants/theme";
 import { Button } from "../../components/ui/Button";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
-import { signIn } from "../../lib/auth/service";
+import { resendConfirmation, signIn } from "../../lib/auth/service";
+import { authErrorMessage } from "../../lib/auth/errors";
+import { checkLogin } from "../../lib/auth/validate";
+import { useLeaveAuth } from "../../lib/auth/useLeaveAuth";
 
 /** Airbnb "Log in or sign up" sheet: centered title, grouped inputs, gradient Continue, "or" divider, outline alternatives. */
 export default function LoginScreen() {
+  const leave = useLeaveAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ code: string | null; text: string } | null>(null);
+  const [resend, setResend] = useState<"idle" | "sending" | "sent">("idle");
 
   async function handleLogin() {
+    const problem = checkLogin(email, password);
+    if (problem) return setError({ code: null, text: problem });
     setLoading(true);
     setError(null);
-    const result = await signIn(email, password);
-    setLoading(false);
-    if (result.error) {
-      setError(result.error);
-      return;
+    setResend("idle");
+    try {
+      const result = await signIn(email, password);
+      if (result.ok) leave();
+      else setError({ code: result.code, text: authErrorMessage(result.code) });
+    } finally {
+      setLoading(false);
     }
-    router.replace("/(tabs)");
+  }
+
+  async function handleResend() {
+    setResend("sending");
+    const r = await resendConfirmation(email);
+    if (r.ok) setResend("sent");
+    else {
+      setResend("idle");
+      setError({ code: r.code, text: authErrorMessage(r.code) });
+    }
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScreenHeader title="Log in or sign up" leading="close" onLeading={() => router.replace("/(tabs)")} />
+      <ScreenHeader title="Log in or sign up" leading="close" onLeading={leave} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Welcome to {brand.name}</Text>
 
         <View style={styles.group}>
           <View style={[styles.field, styles.fieldTop]}>
             <Text style={styles.fieldLabel}>Email</Text>
-            <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.textTertiary} />
+            <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" textContentType="emailAddress" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.textTertiary} />
           </View>
           <View style={[styles.field, styles.fieldBottom]}>
             <Text style={styles.fieldLabel}>Password</Text>
-            <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" placeholderTextColor={colors.textTertiary} />
+            <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" placeholder="••••••••" placeholderTextColor={colors.textTertiary} />
           </View>
         </View>
         <Text style={styles.hint}>We’ll never share your email. Owners log in to manage listings and messages.</Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error}>{error.text}</Text> : null}
+        {error?.code === "email_not_confirmed" ? (
+          resend === "sent" ? (
+            <Text style={styles.hint}>Sent. Check your inbox on this iPhone.</Text>
+          ) : (
+            <Pressable onPress={handleResend} disabled={resend === "sending"} accessibilityRole="button" style={{ marginTop: spacing.sm, alignSelf: "flex-start" }}>
+              <Text style={styles.link}>{resend === "sending" ? "Sending…" : "Resend confirmation email"}</Text>
+            </Pressable>
+          )
+        ) : null}
 
         <Button label="Continue" loading={loading} onPress={handleLogin} style={{ marginTop: spacing.lg }} />
 
@@ -55,7 +82,7 @@ export default function LoginScreen() {
         </View>
 
         <Button label="Create an account" variant="outline" icon="person-add-outline" onPress={() => router.push("/auth/signup")} />
-        <Button label="Continue without an account" variant="outline" icon="arrow-forward-outline" style={{ marginTop: spacing.md }} onPress={() => router.replace("/(tabs)")} />
+        <Button label="Continue without an account" variant="outline" icon="arrow-forward-outline" style={{ marginTop: spacing.md }} onPress={leave} />
 
         <Pressable onPress={() => router.push("/auth/forgot-password")} style={{ marginTop: spacing.xl, alignSelf: "center" }}>
           <Text style={styles.link}>Forgot password?</Text>
